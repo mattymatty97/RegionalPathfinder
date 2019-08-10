@@ -1,2 +1,3 @@
 rootProject.name = 'RegionalPathfinder'
+include 'main'
 
