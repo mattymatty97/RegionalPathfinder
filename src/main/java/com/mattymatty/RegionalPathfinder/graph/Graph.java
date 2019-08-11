@@ -110,7 +110,6 @@ public class Graph{
         System.loadLibrary("c-graph");
     }
 
-
     static public class Node{
         final int n_id;
         final Graph graph;
@@ -136,7 +135,7 @@ public class Graph{
         final double distance;
         final Graph graph;
 
-        Edge(Node node_1, Node node_2, double distance) throws GraphExeption {
+        public Edge(Node node_1, Node node_2, double distance) throws GraphExeption {
             this.node_1 = node_1;
             this.node_2 = node_2;
             this.distance = distance;

@@ -1,4 +1,4 @@
-package com.mattymatty.RegionalPathfinder.Path;
+package com.mattymatty.RegionalPathfinder.path;
 
 import org.bukkit.Location;
 

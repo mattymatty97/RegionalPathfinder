@@ -1,8 +1,9 @@
-package com.mattymatty.RegionalPathfinder.Path;
+package com.mattymatty.RegionalPathfinder.path;
 
 import org.bukkit.Location;
 import org.bukkit.World;
 
+import java.util.List;
 import java.util.concurrent.Callable;
 
 /*
@@ -21,8 +22,23 @@ public interface Region {
     //the world this region is into
     World getWorld();
 
-    //the corners of this region ( 4 if lvl 1, more if higher lvl but always multiples of 4 )
+    //the corners of this region ( 6 if lvl 1, more if higher lvl but always multiples of 6 )
     Location[] getCorners();
+
+
+    //a getter for all the locations where the entity can stand
+    List<Location> getValidLocations();
+
+    //a getter for all the locations where the entity can stand near a point
+    List<Location> getValidLocations(Location center, int radius);
+
+
+    //a getter for all the locations where the entity can stand
+    List<Location> getReachableLocations();
+
+    //a getter for all the locations where the entity can stand near a point
+    List<Location> getReachableLocations(Location center, int radius);
+
 
     //if this region is ready to be used
     boolean isValid();
