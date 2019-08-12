@@ -14,7 +14,7 @@ import java.util.Map;
 
 public class RegionalPathfinder extends JavaPlugin {
 
-    public static RegionalPathfinder instance;
+    private static RegionalPathfinder instance;
 
     private Map<String, Region> regionMap = new HashMap<>();
 
@@ -52,6 +52,10 @@ public class RegionalPathfinder extends JavaPlugin {
     public void removeRegion(Region region){
         regionMap.remove(region.getName());
         ((InternalRegion)region).delete();
+    }
+
+    public static RegionalPathfinder getInstance(){
+        return instance;
     }
 
     public RegionalPathfinder() {
