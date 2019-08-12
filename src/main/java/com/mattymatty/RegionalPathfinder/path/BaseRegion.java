@@ -1,42 +1,34 @@
 package com.mattymatty.RegionalPathfinder.path;
 
+import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.graph.Graph;
 import com.mattymatty.RegionalPathfinder.path.entity.Entity;
 import com.mattymatty.RegionalPathfinder.path.entity.PlayerEntity;
+import com.mattymatty.RegionalPathfinder.path.loader.LoadData;
+import com.mattymatty.RegionalPathfinder.path.loader.Loader;
+import com.mattymatty.RegionalPathfinder.path.loader.SynchronousLoader;
 import org.bukkit.Location;
 import org.bukkit.World;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 
-class BaseRegion extends InternalRegion {
+public class BaseRegion extends InternalRegion {
 
     private final int ID;
 
     private String Name;
 
-    private World World;
-
-    private Location[] Corners;
-
-    private boolean valid=false;
-
     private List<Integer> errors = new ArrayList<>();
 
-    private Entity entity = new PlayerEntity();
+    private LoadData loadData = new LoadData(null,null,new Graph(),new MovementCost());
 
-    private Graph graph = new Graph();
-
-
+    private Loader loader = new SynchronousLoader();
 
 
-
-
-
-
-
-    //PUBLIC METHOD HERE
+    //METHODS FROM INTERFACE
 
 
     @Override
@@ -56,12 +48,12 @@ class BaseRegion extends InternalRegion {
 
     @Override
     public World getWorld() {
-        return World;
+        return (loadData.lowerCorner==null)?null:loadData.lowerCorner.getWorld();
     }
 
     @Override
     public Location[] getCorners() {
-        return Corners;
+        return null;
     }
 
     @Override
@@ -86,7 +78,7 @@ class BaseRegion extends InternalRegion {
 
     @Override
     public boolean isValid() {
-        return valid;
+        return loadData.getStatus() == LoadData.Status.VALIDATED;
     }
 
     @Override
@@ -104,23 +96,42 @@ class BaseRegion extends InternalRegion {
         return null;
     }
 
-
-
-
-
-
-
-
-    //PROTECTED METHODS HERE
-
+    //METHODS FROM INTERNAL
     @Override
-    boolean tryValidate() {
-        return false;
+    public void delete() {}
+
+
+
+    //LOCAL METHODS
+
+    private void load(){
+        loader.load(loadData);
     }
 
-    @Override
-    void delete() {
+    private void evaluate(){
+        loader.evaluate(loadData);
+    }
 
+    public void validate(){
+        loader.validate(loadData);
+    }
+
+    public Location[] setCorners(Location c1,Location c2){
+        if(c1.getWorld() == c2.getWorld()){
+            loadData.lowerCorner= new Location(c1.getWorld(),Math.min(c1.getX(),c2.getX()),Math.min(c1.getY(),c2.getY()),Math.min(c1.getZ(),c2.getZ()));
+            loadData.upperCorner= new Location(c1.getWorld(),Math.max(c1.getX(),c2.getX()),Math.max(c1.getY(),c2.getY()),Math.max(c1.getZ(),c2.getZ()));
+            load();
+            return new Location[]{loadData.lowerCorner,loadData.upperCorner};
+        }
+        return null;
+    }
+
+    public Location setSamplePoint(Location sa){
+        if(sa.getWorld() == loadData.upperCorner.getWorld()){
+            loadData.samplePoint = sa;
+            evaluate();
+        }
+        return null;
     }
 
     BaseRegion(String name) {

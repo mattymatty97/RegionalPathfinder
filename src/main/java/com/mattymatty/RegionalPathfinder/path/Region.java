@@ -51,4 +51,10 @@ public interface Region {
 
     Status getAsyncPath(Location start, Location end, Callable<Iterable<Location>> callback);
 
+    static Region createRegion(String name,RegionType type){
+        if(type==RegionType.BASE)
+            return new BaseRegion(name);
+        return null;
+    }
+
 }

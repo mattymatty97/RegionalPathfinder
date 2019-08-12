@@ -1,9 +1,12 @@
 package com.mattymatty.RegionalPathfinder.path.loader;
 
 import com.mattymatty.RegionalPathfinder.graph.Graph;
+import com.mattymatty.RegionalPathfinder.path.BlockNode;
 import com.mattymatty.RegionalPathfinder.path.MovementCost;
 import com.mattymatty.RegionalPathfinder.path.entity.Entity;
 import org.bukkit.Location;
+
+import java.util.HashMap;
 
 public class LoadData {
     //data from Region
@@ -15,6 +18,7 @@ public class LoadData {
     public MovementCost cost;
 
     //generated datas;
+    HashMap<Location, BlockNode> nodesMap;
     Status status;
     int x_size;
     int y_size;
@@ -23,6 +27,10 @@ public class LoadData {
 
     public Status getStatus() {
         return status;
+    }
+
+    public HashMap<Location, BlockNode> getNodesMap() {
+        return nodesMap;
     }
 
     public LoadData(Location upperCorner, Location lowerCorner, Graph graph, MovementCost cost) {
@@ -34,6 +42,7 @@ public class LoadData {
         this.y_size = upperCorner.getBlockY() - lowerCorner.getBlockY();
         this.z_size = upperCorner.getBlockZ() - lowerCorner.getBlockZ();
         this.status = null;
+        this.nodesMap = new HashMap<>();
         this.map = new int[x_size][y_size][z_size];
         for (int i = 0; i < (x_size * y_size * z_size); i++) {
             map
@@ -43,12 +52,22 @@ public class LoadData {
         }
     }
 
-    public enum Status {
-        LOADING,
-        LOADED,
-        EVALUATING,
-        EVALUATED,
-        VALIDATING,
-        VALIDATED
+    public enum Status implements Comparable<Status> {
+        LOADING(0),
+        LOADED(1),
+        EVALUATING(2),
+        EVALUATED(3),
+        VALIDATING(4),
+        VALIDATED(5);
+
+        final int value;
+
+        Status(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
     }
 }

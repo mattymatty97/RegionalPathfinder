@@ -69,7 +69,6 @@ void Graph::_load_edges(int size, int start_nodes[], int end_nodes[], double wei
         double weight = weights[i];
 
         _nodes[node_pos[ID1]].addEdge(ID2, weight);
-        _nodes[node_pos[ID2]].addEdge(ID1, weight);
     }
 
 }
