@@ -5,6 +5,7 @@ import com.mattymatty.RegionalPathfinder.path.Region;
 import com.mattymatty.RegionalPathfinder.path.RegionType;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,6 +33,11 @@ public class RegionalPathfinder extends JavaPlugin {
         regionMap.put(name,region);
         return region;
     }
+
+    public static Region[] getRegions(){
+        return regionMap.values().stream().sorted(Comparator.comparing(Region::getLevel)).toArray(Region[]::new);
+    }
+
 
     public static Region getRegion(String name){
         return regionMap.get(name);
