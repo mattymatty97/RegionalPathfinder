@@ -3,15 +3,20 @@ package com.mattymatty.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.path.InternalRegion;
 import com.mattymatty.RegionalPathfinder.path.Region;
 import com.mattymatty.RegionalPathfinder.path.RegionType;
+import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.plugin.java.JavaPluginLoader;
 
+import java.io.File;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 
 public class RegionalPathfinder extends JavaPlugin {
 
-    private static Map<String, Region> regionMap = new HashMap<>();
+    public static RegionalPathfinder instance;
+
+    private Map<String, Region> regionMap = new HashMap<>();
 
     @Override
     public void onLoad() {
@@ -28,24 +33,33 @@ public class RegionalPathfinder extends JavaPlugin {
         super.onEnable();
     }
 
-    public static Region createRegion(String name, RegionType type){
+
+    public Region createRegion(String name, RegionType type){
         Region region = Region.createRegion(name,type);
         regionMap.put(name,region);
         return region;
     }
 
-    public static Region[] getRegions(){
+    public Region[] getRegions(){
         return regionMap.values().stream().sorted(Comparator.comparing(Region::getLevel)).toArray(Region[]::new);
     }
 
 
-    public static Region getRegion(String name){
+    public Region getRegion(String name){
         return regionMap.get(name);
     }
 
-    public static void removeRegion(Region region){
+    public void removeRegion(Region region){
         regionMap.remove(region.getName());
         ((InternalRegion)region).delete();
     }
 
+    public RegionalPathfinder() {
+        instance = this;
+    }
+
+    public RegionalPathfinder(JavaPluginLoader loader, PluginDescriptionFile description, File dataFolder, File file) {
+        super(loader, description, dataFolder, file);
+        instance = this;
+    }
 }
