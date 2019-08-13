@@ -1,0 +1,39 @@
+See file:///mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/build/tmp/compileJniSharedLibraryJniCpp/output.txt for all output for compileJniSharedLibraryJniCpp.
+compiling Edge.cpp successful.
+
+compiling graph_adapter.cpp failed.
+/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/graph_adapter.cpp:4:10: fatal error: jni.h: No such file or directory
+ #include <jni.h>
+          ^~~~~~~
+compilation terminated.
+
+compiling PQ.cpp successful.
+/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/PQ.cpp: In member function ‘void PQ::PQdisplay()’:
+/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/PQ.cpp:93:92: warning: format ‘%d’ expects argument of type ‘int’, but argument 4 has type ‘double’ [-Wformat=]
+         fprintf(stdout, "Node %d, pq_value= %d", array[i]->getID(), array[i]->getPQ_Value());
+                                                                     ~~~~~~~~~~~~~~~~~~~~~~~^
+
+compiling Node.cpp successful.
+/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Node.cpp: In member function ‘int Node::addEdge(int, double)’:
+/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Node.cpp:39:89: warning: format ‘%d’ expects argument of type ‘int’, but argument 5 has type ‘double’ [-Wformat=]
+         fprintf(stdout, "\nCreate edge between %d and %d, value=%d", this->ID, ID, value);
+                                                                                         ^
+
+compiling graph.cpp successful.
+
+compiling Dijkstra.cpp successful.
+/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Dijkstra.cpp: In static member function ‘static int Dijkstra::dijkstra(int, Node*, int, int, int**)’:
+/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Dijkstra.cpp:21:51: warning: converting to non-pointer type ‘int’ from NULL [-Wconversion-null]
+     if (startID >= n_nodes || startID < 0) return NULL;
+                                                   ^~~~
+/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Dijkstra.cpp:22:46: warning: converting to non-pointer type ‘int’ from NULL [-Wconversion-null]
+     if (endID>= n_nodes || endID < 0) return NULL;
+                                              ^~~~
+/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Dijkstra.cpp:62:74: warning: format ‘%d’ expects argument of type ‘int’, but argument 4 has type ‘double’ [-Wformat=]
+             fprintf(stdout, "%d : %d metres\n", i, nodes[i].getPQ_Value());
+                                                    ~~~~~~~~~~~~~~~~~~~~~~^
+/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Dijkstra.cpp:74:62: warning: format ‘%d’ expects argument of type ‘int’, but argument 3 has type ‘double’ [-Wformat=]
+     fprintf(stdout, "\nWeight=%d", nodes[endID].getPQ_Value());
+                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~^
+
+Finished compileJniSharedLibraryJniCpp, see full log file:///mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/build/tmp/compileJniSharedLibraryJniCpp/output.txt.

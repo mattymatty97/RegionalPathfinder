@@ -35,7 +35,7 @@ public class Commands implements CommandExecutor {
             Player player = (Player) sender;
             if(args.length >= 2){
                 if(args[0].equals("create")){
-                    if(args.length==3 && args[1].equalsIgnoreCase("baseRegion")) {
+                    if(args.length==3 && args[1].equalsIgnoreCase("base")) {
                         plugin.createRegion(args[2], RegionType.BASE);
                         sender.sendMessage("Region " + args[2] + " created");
                     }
@@ -107,6 +107,16 @@ public class Commands implements CommandExecutor {
                                 }
                                 return true;
                             }
+                            case "path": {
+                                region.getAsyncPath(pos1,pos2,(path)->{
+                                    if (path == null) {
+                                        sender.sendMessage("Error no path found");
+                                    } else {
+                                        showParticles(path);
+                                        sender.sendMessage("Shown particles onto path, remove with /regionalpathfinder particle");
+                                    }
+                                });
+                            }
                         }
                         return true;
 
@@ -138,19 +148,23 @@ public class Commands implements CommandExecutor {
 
     private void showParticles(Iterable<Location> locations){
         for (Location loc : locations) {
-            Location act = loc.clone();
+            Location act = cloneLoc(loc);
             Thread particle = new Thread(() -> {
-                while (!Thread.interrupted()) {
-                    plugin.getServer().getScheduler().runTask(plugin, () -> Objects.requireNonNull(act.getWorld()).spawnParticle(Particle.VILLAGER_HAPPY, act, 7));
-                    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException ignored) {
+                try {
+                    while (!Thread.interrupted()) {
+                        plugin.getServer().getScheduler().runTask(plugin, () -> Objects.requireNonNull(act.getWorld()).spawnParticle(Particle.VILLAGER_HAPPY, act, 7));
+                        Thread.sleep(500);
                     }
-                }
+                } catch (InterruptedException ignored) { }
             });
             particle.start();
             particles.add(particle);
         }
+    }
+
+
+    private Location cloneLoc(Location loc){
+        return new Location(loc.getWorld(),loc.getX(),loc.getY(),loc.getZ());
     }
 
 }

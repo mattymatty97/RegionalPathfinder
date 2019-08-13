@@ -1,12 +1,12 @@
 package com.mattymatty.RegionalPathfinder.api.region;
 
-import com.mattymatty.RegionalPathfinder.core.RegionImpl;
+import com.mattymatty.RegionalPathfinder.core.region.RegionImpl;
 import com.mattymatty.RegionalPathfinder.api.Status;
 import org.bukkit.Location;
 import org.bukkit.World;
 
 import java.util.List;
-import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 
 /*
     THIS CLASS IS THE PUBLIC INTERFACE THAT USERS SHOULD USE
@@ -55,16 +55,7 @@ public interface Region {
 
     void validate();
 
-
-    List<Location> getPath(Location start, Location end);
-
-    Status getAsyncPath(Location start, Location end, Callable<List<Location>> callback);
-
-
-
-
-
-
+    Status getAsyncPath(Location start, Location end, Consumer<List<Location>> callback);
 
 
     static Region createRegion(String name, RegionType type){

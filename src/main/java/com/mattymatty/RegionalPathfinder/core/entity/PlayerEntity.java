@@ -41,15 +41,15 @@ public class PlayerEntity implements Entity {
     @Override
     public boolean isValidLocation(Location loc) {
         Block block = loc.getBlock();
-        if (block.isPassable() && !blockExceptions.contains(block.getType()))
+        if (!(block.isPassable() && !blockExceptions.contains(block.getType())))
             return false;
         
-        block = loc.clone().add(0,1,0).getBlock();
-        if (block.isPassable() && !blockExceptions.contains(block.getType()))
+        block = cloneLoc(loc).add(0,1,0).getBlock();
+        if (!(block.isPassable() && !blockExceptions.contains(block.getType())))
             return false;
 
-        block = loc.clone().add(0,-1,0).getBlock();
-        if (!(block.isPassable() && !blockExceptions.contains(block.getType())))
+        block = cloneLoc(loc).add(0,-1,0).getBlock();
+        if (block.isPassable() && !blockExceptions.contains(block.getType()))
             return false;
         
         return true;
@@ -67,6 +67,10 @@ public class PlayerEntity implements Entity {
 
     @Override
     public Block evaluableBlock(Location valid) {
-        return valid.clone().add(0,-1,0).getBlock();
+        return cloneLoc(valid).add(0,-1,0).getBlock();
+    }
+
+    private Location cloneLoc(Location loc){
+        return new Location(loc.getWorld(),loc.getX(),loc.getY(),loc.getZ());
     }
 }

@@ -1,0 +1,28 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Edge.h
+
+/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Node.cpp
+limits.h
+-
+cstdio
+-
+math.h
+-
+time.h
+-
+Node.h
+/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Node.h
+
+/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Node.h
+cstdlib
+-
+Edge.h
+/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Edge.h
+

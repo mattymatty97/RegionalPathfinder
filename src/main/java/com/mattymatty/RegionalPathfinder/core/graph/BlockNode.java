@@ -1,4 +1,4 @@
-package com.mattymatty.RegionalPathfinder.core;
+package com.mattymatty.RegionalPathfinder.core.graph;
 
 import com.mattymatty.RegionalPathfinder.core.graph.Graph;
 

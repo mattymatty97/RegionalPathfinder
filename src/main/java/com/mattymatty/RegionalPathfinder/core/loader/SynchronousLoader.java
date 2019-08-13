@@ -1,7 +1,7 @@
 package com.mattymatty.RegionalPathfinder.core.loader;
 
 import com.mattymatty.RegionalPathfinder.core.graph.Graph;
-import com.mattymatty.RegionalPathfinder.core.BlockNode;
+import com.mattymatty.RegionalPathfinder.core.graph.BlockNode;
 import com.mattymatty.RegionalPathfinder.api.cost.MovementCost;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
@@ -21,10 +21,10 @@ public class SynchronousLoader implements Loader {
         int count=0;
         //visit all the points inside the region
         for (int i = 0; i < data.z_size * data.y_size * data.x_size; i++) {
-            int y = i / data.y_size;
-            int z = (i % data.y_size) / data.z_size;
-            int x = ((i % data.y_size) % data.z_size) / data.x_size;
-            Location actual = data.lowerCorner.clone().add(x, y, z);
+            int y = (( i /data. x_size ) / data.z_size ) % data.y_size;
+            int z = ( i / data.x_size ) % data.z_size;
+            int x = i % data.x_size;
+            Location actual = cloneLoc(data.lowerCorner).add(x, y, z);
             //test if the point is a valid point
             if (!data.entity.isValidLocation(actual))
                 data.map[x][y][z] = 0;
@@ -71,15 +71,15 @@ public class SynchronousLoader implements Loader {
 
                 id = node.getN_id();
 
-                y = id / data.y_size;
-                z = (id % data.y_size) / data.z_size;
-                x = ((id % data.y_size) % data.z_size) / data.x_size;
+                y = (( id /data. x_size ) / data.z_size ) % data.y_size;
+                z = ( id / data.x_size ) % data.z_size;
+                x = id % data.x_size;
 
                 //iterate for all the possible movements
                 for (int i = 0; i < 3 * 3 * 3; i++) {
-                    int dy = (id / 3) - 1;
-                    int dz = (id % 3 / 3) - 1;
-                    int dx = (id % 3 % 3 / 3) - 1;
+                    int dy = (i / 3 / 3 ) % 3  - 1;
+                    int dz = (i  / 3) % 3 - 1;
+                    int dx = (i % 3) - 1;
                     int qt = data.entity.allowedMovement(dx, dy, dz);
 
                     //if this movement is allowed
@@ -98,7 +98,7 @@ public class SynchronousLoader implements Loader {
                                 data.map[next_x][next_y][next_z] = 2;
                                 int next_id = next_x + next_z * data.x_size + next_y * data.x_size * data.z_size;
 
-                                Location next_loc = data.lowerCorner.clone().add(next_x,next_y,next_z);
+                                Location next_loc = cloneLoc(data.lowerCorner).add(next_x,next_y,next_z);
                                 BlockNode next_node = new BlockNode(data.graph,next_id,next_loc);
 
                                 findQueue.add(next_node);
@@ -133,11 +133,11 @@ public class SynchronousLoader implements Loader {
         data.status = LoadData.Status.VALIDATING;
         int i;
         for (i = 0; i < data.z_size * data.y_size * data.x_size; i++) {
-            int y = i / data.y_size;
-            int z = (i % data.y_size) / data.z_size;
-            int x = ((i % data.y_size) % data.z_size) / data.x_size;
+            int y = (( i /data. x_size ) / data.z_size ) % data.y_size;
+            int z = ( i / data.x_size ) % data.z_size;
+            int x = i % data.x_size;
             if(data.map[x][y][z] == 2){
-                Location actual = data.lowerCorner.clone().add(x, y, z);
+                Location actual = cloneLoc(data.lowerCorner).add(x, y, z);
                 if(!data.entity.isValidLocation(actual))
                     break;
             }

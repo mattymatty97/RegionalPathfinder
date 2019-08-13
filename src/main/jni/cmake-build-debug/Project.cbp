@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="Project"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="c-graph">
+				<Option output="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/libc-graph.so" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="3"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/lib/jvm/java-8-openjdk-amd64/include"/>
+					<Add directory="/usr/lib/jvm/java-8-openjdk-amd64/include/linux"/>
+					<Add directory="/usr/include/c++/7"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/7"/>
+					<Add directory="/usr/include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/7/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 c-graph"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="c-graph/fast">
+				<Option output="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/libc-graph.so" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="3"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/lib/jvm/java-8-openjdk-amd64/include"/>
+					<Add directory="/usr/lib/jvm/java-8-openjdk-amd64/include/linux"/>
+					<Add directory="/usr/include/c++/7"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/7"/>
+					<Add directory="/usr/include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/7/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 c-graph/fast"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/graph.cpp">
+			<Option target="c-graph"/>
+		</Unit>
+		<Unit filename="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/graph.h">
+			<Option target="c-graph"/>
+		</Unit>
+		<Unit filename="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/graph_adapter.cpp">
+			<Option target="c-graph"/>
+		</Unit>
+		<Unit filename="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Dijkstra.cpp">
+			<Option target="c-graph"/>
+		</Unit>
+		<Unit filename="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Dijkstra.h">
+			<Option target="c-graph"/>
+		</Unit>
+		<Unit filename="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Edge.cpp">
+			<Option target="c-graph"/>
+		</Unit>
+		<Unit filename="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Edge.h">
+			<Option target="c-graph"/>
+		</Unit>
+		<Unit filename="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Node.cpp">
+			<Option target="c-graph"/>
+		</Unit>
+		<Unit filename="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Node.h">
+			<Option target="c-graph"/>
+		</Unit>
+		<Unit filename="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/PQ.cpp">
+			<Option target="c-graph"/>
+		</Unit>
+		<Unit filename="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/PQ.h">
+			<Option target="c-graph"/>
+		</Unit>
+		<Unit filename="/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

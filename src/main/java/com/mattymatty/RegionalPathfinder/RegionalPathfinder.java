@@ -1,6 +1,6 @@
 package com.mattymatty.RegionalPathfinder;
 
-import com.mattymatty.RegionalPathfinder.core.RegionImpl;
+import com.mattymatty.RegionalPathfinder.core.region.RegionImpl;
 import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.api.region.RegionType;
 import org.bukkit.plugin.PluginDescriptionFile;

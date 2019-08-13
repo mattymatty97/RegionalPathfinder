@@ -1,20 +1,24 @@
-package com.mattymatty.RegionalPathfinder.core;
+package com.mattymatty.RegionalPathfinder.core.region;
 
+import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.api.Status;
 import com.mattymatty.RegionalPathfinder.api.cost.MovementCost;
 import com.mattymatty.RegionalPathfinder.api.region.BaseRegion;
 import com.mattymatty.RegionalPathfinder.api.entity.Entity;
 import com.mattymatty.RegionalPathfinder.core.entity.PlayerEntity;
+import com.mattymatty.RegionalPathfinder.core.graph.BlockNode;
 import com.mattymatty.RegionalPathfinder.core.graph.Graph;
 import com.mattymatty.RegionalPathfinder.core.loader.LoadData;
 import com.mattymatty.RegionalPathfinder.core.loader.Loader;
 import com.mattymatty.RegionalPathfinder.core.loader.SynchronousLoader;
+import com.mattymatty.RegionalPathfinder.exeptions.GraphExeption;
 import org.bukkit.Location;
 import org.bukkit.World;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
@@ -115,12 +119,31 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     }
 
     @Override
-    public List<Location> getPath(Location start, Location end) {
-        return null;
-    }
+    public Status getAsyncPath(Location start, Location end, Consumer<List<Location>> callback) {
+        List<Location> reachable = getReachableLocations();
+        Location actual_s = new Location(start.getWorld(),start.getBlockX(),start.getBlockY(),start.getBlockZ()).add(0.5,0.5,0.5);
+        Location actual_e = new Location(end.getWorld(),end.getBlockX(),end.getBlockY(),end.getBlockZ()).add(0.5,0.5,0.5);
 
-    @Override
-    public Status getAsyncPath(Location start, Location end, Callable<List<Location>> callback) {
+        if(reachable==null || start.getWorld() != end.getWorld() || !reachable.contains(actual_s) || !reachable.contains(actual_e))
+            return null;
+
+        BlockNode sNode = loadData.getNodesMap().get(actual_s);
+        BlockNode eNode = loadData.getNodesMap().get(actual_e);
+
+        new Thread(()->{
+            List<Graph.Node> path;
+            try {
+                path = graph.shortestPath(sNode,eNode);
+            } catch (GraphExeption graphExeption) {
+                throw new RuntimeException(graphExeption);
+            }
+
+            RegionalPathfinder.getInstance().getServer().getScheduler()
+                    .runTask(RegionalPathfinder.getInstance(),
+                            ()->callback.accept(path.stream().map((n)->((BlockNode)n).getLocation()).collect(Collectors.toList())));
+
+        }).start();
+
         return null;
     }
 

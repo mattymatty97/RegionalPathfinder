@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -g  -shared -Wl,-soname,libc-graph.so -o libc-graph.so CMakeFiles/c-graph.dir/libs/Edge.cpp.o CMakeFiles/c-graph.dir/libs/Node.cpp.o CMakeFiles/c-graph.dir/libs/PQ.cpp.o CMakeFiles/c-graph.dir/libs/Dijkstra.cpp.o CMakeFiles/c-graph.dir/graph.cpp.o CMakeFiles/c-graph.dir/graph_adapter.cpp.o 

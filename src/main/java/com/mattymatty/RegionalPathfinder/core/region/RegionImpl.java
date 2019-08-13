@@ -1,4 +1,4 @@
-package com.mattymatty.RegionalPathfinder.core;
+package com.mattymatty.RegionalPathfinder.core.region;
 
 import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.api.region.RegionType;

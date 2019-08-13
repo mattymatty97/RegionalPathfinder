@@ -1,0 +1,15 @@
+name: RegionalPathfindeer
+main: com.mattymatty.RegionalPathfinder.RegionalPathfinder
+version: 0.1
+author: The__Matty
+
+commands:
+  regionalpathfinder:
+    description: default command for handling PathRegions
+    usage: /regionalpathfinder
+    aliases: [rpf,rph]
+
+
+permissions:
+
+
