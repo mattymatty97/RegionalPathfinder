@@ -1,17 +1,22 @@
 package com.mattymatty.RegionalPathfinder;
 
-import com.mattymatty.RegionalPathfinder.path.InternalRegion;
-import com.mattymatty.RegionalPathfinder.path.Region;
-import com.mattymatty.RegionalPathfinder.path.RegionType;
+import com.mattymatty.RegionalPathfinder.core.RegionImpl;
+import com.mattymatty.RegionalPathfinder.api.region.Region;
+import com.mattymatty.RegionalPathfinder.api.region.RegionType;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.java.JavaPluginLoader;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
+@SuppressWarnings({"WeakerAccess","UnusedReturnValue"})
 public class RegionalPathfinder extends JavaPlugin {
 
     private static RegionalPathfinder instance;
@@ -21,6 +26,25 @@ public class RegionalPathfinder extends JavaPlugin {
     @Override
     public void onLoad() {
         super.onLoad();
+        File folder = getDataFolder();
+        if(!folder.exists())
+            folder.mkdir();
+        folder = new File(folder.getAbsolutePath()+"/libs");
+        if(!folder.exists())
+            folder.mkdir();
+        File lib = new File(folder.getAbsolutePath()+"/libjni.so");
+        if(!lib.exists()) {
+            try {
+                lib.createNewFile();
+                InputStream stream = this.getResource("libjni.so");
+                FileOutputStream fo = new FileOutputStream(lib);
+                int readBytes;
+                byte[] buffer = new byte[4096];
+                while ((readBytes = stream.read(buffer)) > 0) {
+                    fo.write(buffer, 0, readBytes);
+                }
+            }catch (IOException ignored){}
+        }
     }
 
     @Override
@@ -31,6 +55,7 @@ public class RegionalPathfinder extends JavaPlugin {
     @Override
     public void onEnable() {
         super.onEnable();
+        Objects.requireNonNull(this.getCommand("regionalpathfinder")).setExecutor(new Commands(this));
     }
 
 
@@ -51,7 +76,7 @@ public class RegionalPathfinder extends JavaPlugin {
 
     public void removeRegion(Region region){
         regionMap.remove(region.getName());
-        ((InternalRegion)region).delete();
+        ((RegionImpl)region).delete();
     }
 
     public static RegionalPathfinder getInstance(){

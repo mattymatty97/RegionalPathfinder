@@ -1,9 +1,9 @@
-package com.mattymatty.RegionalPathfinder.path.loader;
+package com.mattymatty.RegionalPathfinder.core.loader;
 
-import com.mattymatty.RegionalPathfinder.graph.Graph;
-import com.mattymatty.RegionalPathfinder.path.BlockNode;
-import com.mattymatty.RegionalPathfinder.path.MovementCost;
-import com.mattymatty.RegionalPathfinder.path.entity.Entity;
+import com.mattymatty.RegionalPathfinder.core.graph.Graph;
+import com.mattymatty.RegionalPathfinder.core.BlockNode;
+import com.mattymatty.RegionalPathfinder.api.cost.MovementCost;
+import com.mattymatty.RegionalPathfinder.api.entity.Entity;
 import org.bukkit.Location;
 
 import java.util.HashMap;
@@ -29,15 +29,36 @@ public class LoadData {
         return status;
     }
 
+    public int getX_size() {
+        return x_size;
+    }
+
+    public int getY_size() {
+        return y_size;
+    }
+
+    public int getZ_size() {
+        return z_size;
+    }
+
+    public int[][][] getMap() {
+        return map;
+    }
+
+    public Graph getGraph() {
+        return graph;
+    }
+
     public HashMap<Location, BlockNode> getNodesMap() {
         return nodesMap;
     }
 
-    public LoadData(Location upperCorner, Location lowerCorner, Graph graph, MovementCost cost) {
+    public LoadData(Location upperCorner, Location lowerCorner, Graph graph, MovementCost cost, Entity entity) {
         this.upperCorner = upperCorner;
         this.lowerCorner = lowerCorner;
         this.graph = graph;
         this.cost = cost;
+        this.entity = entity;
         this.x_size = upperCorner.getBlockX() - lowerCorner.getBlockX();
         this.y_size = upperCorner.getBlockY() - lowerCorner.getBlockY();
         this.z_size = upperCorner.getBlockZ() - lowerCorner.getBlockZ();
@@ -45,10 +66,10 @@ public class LoadData {
         this.nodesMap = new HashMap<>();
         this.map = new int[x_size][y_size][z_size];
         for (int i = 0; i < (x_size * y_size * z_size); i++) {
-            map
-                    [(((i % z_size) % y_size) / x_size)]
-                    [((i % z_size) / y_size)]
-                    [(i / z_size)] = 1;
+            int y = (( i / x_size ) / z_size ) % y_size;
+            int z = ( i / x_size ) % z_size;
+            int x = i % x_size;
+            map[x][y][z] = 1;
         }
     }
 

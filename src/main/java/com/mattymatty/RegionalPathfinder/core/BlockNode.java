@@ -1,6 +1,6 @@
-package com.mattymatty.RegionalPathfinder.path;
+package com.mattymatty.RegionalPathfinder.core;
 
-import com.mattymatty.RegionalPathfinder.graph.Graph;
+import com.mattymatty.RegionalPathfinder.core.graph.Graph;
 
 import org.bukkit.Location;
 

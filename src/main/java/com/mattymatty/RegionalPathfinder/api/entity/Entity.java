@@ -1,4 +1,4 @@
-package com.mattymatty.RegionalPathfinder.path.entity;
+package com.mattymatty.RegionalPathfinder.api.entity;
 
 import org.bukkit.Location;
 import org.bukkit.block.Block;

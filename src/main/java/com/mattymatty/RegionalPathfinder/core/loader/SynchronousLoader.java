@@ -1,8 +1,8 @@
-package com.mattymatty.RegionalPathfinder.path.loader;
+package com.mattymatty.RegionalPathfinder.core.loader;
 
-import com.mattymatty.RegionalPathfinder.graph.Graph;
-import com.mattymatty.RegionalPathfinder.path.BlockNode;
-import com.mattymatty.RegionalPathfinder.path.MovementCost;
+import com.mattymatty.RegionalPathfinder.core.graph.Graph;
+import com.mattymatty.RegionalPathfinder.core.BlockNode;
+import com.mattymatty.RegionalPathfinder.api.cost.MovementCost;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Bisected;

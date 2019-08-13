@@ -15,22 +15,42 @@ repositories {
     mavenLocal()
 }
 
+
+def SYS_INCLUDE_DIR = this.properties['system.include.dir']
+def SYS_LOCAL_INCLUDE_DIR = this.properties['system.local.include.dir']
+def JNI_INCLUDE_DIR = this.properties['jni.include.dir']
+def JNI_LIB_DIR = this.properties['jni.lib.dir']
+
+//
+//model {
+//    components {
+//        jni(NativeLibrarySpec){
+//            sources{
+//                cpp{
+//                    source {
+//                        srcDir "src/main/jni"
+//                        include "**/*.cpp"
+//                    }
+//                }
+//            }
+//            toolChains {
+//                gcc(Gcc) {
+//                    eachPlatform {
+//                        cppCompiler.withArguments { args ->
+//                            args << "-I ${org.gradle.internal.jvm.Jvm.current().javaHome}/include"
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
+//
+//
+//}
+
+
+
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
     compileOnly 'org.spigotmc:spigot-api:1.13.2-R0.1-SNAPSHOT'
-}
-
-model {
-    components {
-        "c-graph"(NativeLibrarySpec){
-            sources {
-                cpp {
-                    source {
-                        srcDir 'src/main/cpp'
-                        include "**/*.cpp"
-                    }
-                }
-            }
-        }
-    }
 }

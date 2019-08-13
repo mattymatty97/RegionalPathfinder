@@ -1,10 +1,12 @@
-package com.mattymatty.RegionalPathfinder.graph;
+package com.mattymatty.RegionalPathfinder.core.graph;
 
 
+import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
+import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.exeptions.GraphExeption;
 import com.mattymatty.RegionalPathfinder.exeptions.NodeExeption;
 
-import org.bukkit.Location;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -105,9 +107,13 @@ public class Graph{
     private native void loadCEdges(long id,int size , int[] startNodes,int[] endNodes,double[] weights);
     private native int[] shortestCPath(long id,int start,int end);
 
-    //specify which library use to load antive methods
+    //specify which library use to load native methods
     static {
-        System.loadLibrary("c-graph");
+        try {
+            System.load(RegionalPathfinder.getInstance().getDataFolder().getAbsolutePath() + "/libs/libjni.so");
+        }catch (Exception ex){
+            ex.printStackTrace();
+        }
     }
 
     static public class Node{

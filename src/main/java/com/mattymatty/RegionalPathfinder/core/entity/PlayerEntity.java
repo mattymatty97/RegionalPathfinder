@@ -1,6 +1,7 @@
-package com.mattymatty.RegionalPathfinder.path.entity;
+package com.mattymatty.RegionalPathfinder.core.entity;
 
 import com.google.common.collect.Lists;
+import com.mattymatty.RegionalPathfinder.api.entity.Entity;
 import org.bukkit.Location;
 import org.bukkit.Material;
 
@@ -10,7 +11,7 @@ import org.bukkit.block.Block;
 
 import java.util.List;
 
-public class PlayerEntity implements Entity{
+public class PlayerEntity implements Entity {
     
     private final List<Material> blockExceptions = Lists.newArrayList(
             ACACIA_DOOR,

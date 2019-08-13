@@ -8,7 +8,7 @@
 
 //adapter library for loadCNodes
 extern "C" JNIEXPORT void JNICALL
-Java_com_mattymatty_RegionalPathfinder_graph_Graph_loadCNodes(
+Java_com_mattymatty_RegionalPathfinder_core_graph_Graph_loadCNodes(
         JNIEnv *env,
         jobject /* this */,jlong id,jint size, jintArray nodes) {
         jboolean boolean;
@@ -20,7 +20,7 @@ Java_com_mattymatty_RegionalPathfinder_graph_Graph_loadCNodes(
 
 //adapter library for loadCEdges
 extern "C" JNIEXPORT void JNICALL
-Java_com_mattymatty_RegionalPathfinder_graph_Graph_loadCEdges(
+Java_com_mattymatty_RegionalPathfinder_core_graph_Graph_loadCEdges(
         JNIEnv *env,
         jobject /* this */,jlong id,jint size, jintArray start_nodes,jintArray end_nodes,jdoubleArray weights) {
         jboolean boolean;
@@ -34,7 +34,7 @@ Java_com_mattymatty_RegionalPathfinder_graph_Graph_loadCEdges(
 
 //adapter library for shortestCPath
 extern "C" JNIEXPORT jintArray JNICALL
-Java_com_mattymatty_RegionalPathfinder_graph_Graph_shortestCPath(
+Java_com_mattymatty_RegionalPathfinder_core_graph_Graph_shortestCPath(
         JNIEnv *env,
         jobject /* this */,jlong id,jint start,jint end) {
     jintArray jret;

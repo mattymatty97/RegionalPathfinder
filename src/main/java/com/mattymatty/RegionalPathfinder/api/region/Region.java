@@ -1,5 +1,7 @@
-package com.mattymatty.RegionalPathfinder.path;
+package com.mattymatty.RegionalPathfinder.api.region;
 
+import com.mattymatty.RegionalPathfinder.core.RegionImpl;
+import com.mattymatty.RegionalPathfinder.api.Status;
 import org.bukkit.Location;
 import org.bukkit.World;
 
@@ -46,15 +48,27 @@ public interface Region {
     //if it is not valid this will provide a list of the reasons
     String[] getErrors();
 
+    //a method to redo all the loading,evaluating and verifing
+    void load();
 
-    Iterable<Location> getPath(Location start, Location end);
+    void evaluate();
 
-    Status getAsyncPath(Location start, Location end, Callable<Iterable<Location>> callback);
+    void validate();
 
-    static Region createRegion(String name,RegionType type){
-        if(type==RegionType.BASE)
-            return new BaseRegion(name);
-        return null;
+
+    List<Location> getPath(Location start, Location end);
+
+    Status getAsyncPath(Location start, Location end, Callable<List<Location>> callback);
+
+
+
+
+
+
+
+
+    static Region createRegion(String name, RegionType type){
+        return RegionImpl.createRegion(name,type);
     }
 
 }
