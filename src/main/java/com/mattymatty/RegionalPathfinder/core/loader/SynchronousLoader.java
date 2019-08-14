@@ -57,7 +57,7 @@ public class SynchronousLoader implements Loader {
             }
             data.map[x][y][z] = 2;
             //add the point to the graph
-            BlockNode node = new BlockNode(data.graph, id, data.samplePoint);
+            BlockNode node = new BlockNode(data.graph, id, data.graph.getAndIncrementNodeID(), data.samplePoint);
             data.graph.addNode(node);
             data.nodesMap.put(node.getLocation(),node);
 
@@ -69,7 +69,7 @@ public class SynchronousLoader implements Loader {
             while (!findQueue.isEmpty()) {
                 node = findQueue.poll();
 
-                id = node.getN_id();
+                id = node.getI();
 
                 y = (( id /data. x_size ) / data.z_size ) % data.y_size;
                 z = ( id / data.x_size ) % data.z_size;
@@ -99,7 +99,7 @@ public class SynchronousLoader implements Loader {
                                 int next_id = next_x + next_z * data.x_size + next_y * data.x_size * data.z_size;
 
                                 Location next_loc = cloneLoc(data.lowerCorner).add(next_x,next_y,next_z);
-                                BlockNode next_node = new BlockNode(data.graph,next_id,next_loc);
+                                BlockNode next_node = new BlockNode(data.graph,next_id,data.graph.getAndIncrementNodeID(),next_loc);
 
                                 findQueue.add(next_node);
 

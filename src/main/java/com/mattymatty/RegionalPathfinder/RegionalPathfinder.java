@@ -45,6 +45,11 @@ public class RegionalPathfinder extends JavaPlugin {
                 }
             }catch (IOException ignored){}
         }
+        try {
+            System.load(RegionalPathfinder.getInstance().getDataFolder().getAbsolutePath() + "/libs/libjni.so");
+        }catch (Exception ex){
+            ex.printStackTrace();
+        }
     }
 
     @Override

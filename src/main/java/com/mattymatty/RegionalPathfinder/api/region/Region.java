@@ -55,6 +55,8 @@ public interface Region {
 
     void validate();
 
+    List<Location> getPath(Location start, Location end);
+
     Status getAsyncPath(Location start, Location end, Consumer<List<Location>> callback);
 
 

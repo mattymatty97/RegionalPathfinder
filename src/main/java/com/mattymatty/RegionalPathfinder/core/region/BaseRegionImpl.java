@@ -119,6 +119,26 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     }
 
     @Override
+    public List<Location> getPath(Location start, Location end) {
+        List<Location> reachable = getReachableLocations();
+        Location actual_s = new Location(start.getWorld(),start.getBlockX(),start.getBlockY(),start.getBlockZ()).add(0.5,0.5,0.5);
+        Location actual_e = new Location(end.getWorld(),end.getBlockX(),end.getBlockY(),end.getBlockZ()).add(0.5,0.5,0.5);
+
+        if(reachable==null || start.getWorld() != end.getWorld() || !reachable.contains(actual_s) || !reachable.contains(actual_e))
+            return null;
+
+        BlockNode sNode = loadData.getNodesMap().get(actual_s);
+        BlockNode eNode = loadData.getNodesMap().get(actual_e);
+        List<Graph.Node> path;
+        try {
+            path = graph.shortestPath(sNode,eNode);
+        } catch (GraphExeption graphExeption) {
+            throw new RuntimeException(graphExeption);
+        }
+        return path.stream().map((n)->((BlockNode)n).getLocation()).collect(Collectors.toList());
+    }
+
+    @Override
     public Status getAsyncPath(Location start, Location end, Consumer<List<Location>> callback) {
         List<Location> reachable = getReachableLocations();
         Location actual_s = new Location(start.getWorld(),start.getBlockX(),start.getBlockY(),start.getBlockZ()).add(0.5,0.5,0.5);

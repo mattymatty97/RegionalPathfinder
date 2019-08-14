@@ -8,8 +8,14 @@ public class BlockNode extends Graph.Node {
 
     private final Location location;
 
+    private final int i;
+
     public Location getLocation() {
         return location;
+    }
+
+    public int getI() {
+        return i;
     }
 
     /**
@@ -19,8 +25,9 @@ public class BlockNode extends Graph.Node {
      * @param graph
      * @param n_id  local id used for pathfinding algorithm
      */
-    public BlockNode(Graph graph, int n_id,Location location) {
+    public BlockNode(Graph graph,int i, int n_id,Location location) {
         super(graph, n_id);
         this.location = location;
+        this.i = i;
     }
 }

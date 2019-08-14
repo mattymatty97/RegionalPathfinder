@@ -15,6 +15,8 @@ CMakeFiles/c-graph.dir/graph_adapter.cpp.o
  /mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Edge.h
  /mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Node.h
  /mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/PQ.h
+ /usr/lib/jvm/java-8-openjdk-amd64/include/jni.h
+ /usr/lib/jvm/java-8-openjdk-amd64/include/linux/jni_md.h
 CMakeFiles/c-graph.dir/libs/Dijkstra.cpp.o
  /mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Dijkstra.cpp
  /mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/libs/Dijkstra.h

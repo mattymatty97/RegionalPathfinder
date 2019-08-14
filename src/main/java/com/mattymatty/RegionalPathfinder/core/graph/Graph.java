@@ -1,12 +1,9 @@
 package com.mattymatty.RegionalPathfinder.core.graph;
 
 
-import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
-import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.exeptions.GraphExeption;
 import com.mattymatty.RegionalPathfinder.exeptions.NodeExeption;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -18,6 +15,8 @@ public class Graph{
     static long ctn=0;
 
     long id;
+
+    private int node_id=0;
 
     public Graph() {
         id=ctn++;
@@ -50,6 +49,18 @@ public class Graph{
 
     public List<Edge> getEdges(){
         return new ArrayList<>(edges);
+    }
+
+    public int getAndIncrementNodeID(){
+        return node_id++;
+    }
+
+    public int resetNodeID(){
+        return node_id=0;
+    }
+
+    public int getNode_id(){
+        return node_id;
     }
 
 
@@ -106,15 +117,6 @@ public class Graph{
     private native void loadCNodes(long id,int size , int[] nodes);
     private native void loadCEdges(long id,int size , int[] startNodes,int[] endNodes,double[] weights);
     private native int[] shortestCPath(long id,int start,int end);
-
-    //specify which library use to load native methods
-    static {
-        try {
-            System.load(RegionalPathfinder.getInstance().getDataFolder().getAbsolutePath() + "/libs/libjni.so");
-        }catch (Exception ex){
-            ex.printStackTrace();
-        }
-    }
 
     static public class Node{
         final int n_id;

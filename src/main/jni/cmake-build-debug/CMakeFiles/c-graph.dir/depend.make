@@ -14,6 +14,8 @@ CMakeFiles/c-graph.dir/graph_adapter.cpp.o: ../libs/Dijkstra.h
 CMakeFiles/c-graph.dir/graph_adapter.cpp.o: ../libs/Edge.h
 CMakeFiles/c-graph.dir/graph_adapter.cpp.o: ../libs/Node.h
 CMakeFiles/c-graph.dir/graph_adapter.cpp.o: ../libs/PQ.h
+CMakeFiles/c-graph.dir/graph_adapter.cpp.o: /usr/lib/jvm/java-8-openjdk-amd64/include/jni.h
+CMakeFiles/c-graph.dir/graph_adapter.cpp.o: /usr/lib/jvm/java-8-openjdk-amd64/include/linux/jni_md.h
 
 CMakeFiles/c-graph.dir/libs/Dijkstra.cpp.o: ../libs/Dijkstra.cpp
 CMakeFiles/c-graph.dir/libs/Dijkstra.cpp.o: ../libs/Dijkstra.h

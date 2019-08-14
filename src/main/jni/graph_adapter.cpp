@@ -16,6 +16,8 @@ Java_com_mattymatty_RegionalPathfinder_core_graph_Graph_loadCNodes(
         int * nodes_array = env->GetIntArrayElements(nodes,&boolean);
         //call function
         Graph::load_nodes(id,size,nodes_array);
+
+        env->ReleaseIntArrayElements(nodes,nodes_array,0);
 }
 
 //adapter library for loadCEdges
@@ -30,6 +32,10 @@ Java_com_mattymatty_RegionalPathfinder_core_graph_Graph_loadCEdges(
         double * weights_array = env->GetDoubleArrayElements(weights,&boolean);
         //call function
         Graph::load_edges(id,size,start_nodes_array,end_nodes_array,weights_array);
+
+        env->ReleaseIntArrayElements(start_nodes,start_nodes_array,0);
+        env->ReleaseIntArrayElements(end_nodes,end_nodes_array,0);
+        env->ReleaseDoubleArrayElements(weights,weights_array,0);
 }
 
 //adapter library for shortestCPath
