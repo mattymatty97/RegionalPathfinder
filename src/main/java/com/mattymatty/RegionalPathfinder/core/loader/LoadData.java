@@ -1,9 +1,10 @@
 package com.mattymatty.RegionalPathfinder.core.loader;
 
+import com.mattymatty.RegionalPathfinder.api.region.BaseRegion;
 import com.mattymatty.RegionalPathfinder.core.graph.Graph;
 import com.mattymatty.RegionalPathfinder.core.graph.BlockNode;
-import com.mattymatty.RegionalPathfinder.api.cost.MovementCost;
 import com.mattymatty.RegionalPathfinder.api.entity.Entity;
+import com.mattymatty.RegionalPathfinder.core.region.BaseRegionImpl;
 import org.bukkit.Location;
 
 import java.util.HashMap;
@@ -13,12 +14,10 @@ public class LoadData {
     public Location upperCorner;
     public Location lowerCorner;
     public Location samplePoint;
-    public Entity entity;
-    Graph graph;
-    public MovementCost cost;
+    public final BaseRegionImpl region;
 
     //generated datas;
-    HashMap<Location, BlockNode> nodesMap;
+    HashMap<Location,BlockNode> nodesMap;
     Status status;
     int x_size;
     int y_size;
@@ -45,20 +44,14 @@ public class LoadData {
         return map;
     }
 
-    public Graph getGraph() {
-        return graph;
-    }
-
     public HashMap<Location, BlockNode> getNodesMap() {
         return nodesMap;
     }
 
-    public LoadData(Location upperCorner, Location lowerCorner, Graph graph, MovementCost cost, Entity entity) {
+    public LoadData(BaseRegionImpl region, Location upperCorner, Location lowerCorner) {
+        this.region = region;
         this.upperCorner = upperCorner;
         this.lowerCorner = lowerCorner;
-        this.graph = graph;
-        this.cost = cost;
-        this.entity = entity;
         this.x_size = upperCorner.getBlockX() - lowerCorner.getBlockX();
         this.y_size = upperCorner.getBlockY() - lowerCorner.getBlockY();
         this.z_size = upperCorner.getBlockZ() - lowerCorner.getBlockZ();

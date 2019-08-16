@@ -2,6 +2,7 @@ package com.mattymatty.RegionalPathfinder.core.region;
 
 import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.api.region.RegionType;
+import com.mattymatty.RegionalPathfinder.core.loader.Loader;
 import org.bukkit.Location;
 
 import java.util.LinkedList;
@@ -21,6 +22,11 @@ public interface RegionImpl extends Region {
         common.retainAll(this.getReachableLocations());
         return common;
     }
+
+    Loader setLoader(Loader loader);
+
+    Loader getLoader();
+
 
     //a cancellation method
     void delete();

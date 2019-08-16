@@ -5,6 +5,9 @@ import java.util.LinkedList;
 import java.util.List;
 
 public interface Loader {
+    //max dimensions 1290 blocks each size
+
+
     void load(LoadData data);
 
     void evaluate(LoadData data);

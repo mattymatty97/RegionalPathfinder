@@ -2,7 +2,6 @@ package com.mattymatty.RegionalPathfinder.core.region;
 
 import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.api.Status;
-import com.mattymatty.RegionalPathfinder.api.cost.MovementCost;
 import com.mattymatty.RegionalPathfinder.api.region.BaseRegion;
 import com.mattymatty.RegionalPathfinder.api.entity.Entity;
 import com.mattymatty.RegionalPathfinder.core.entity.PlayerEntity;
@@ -28,9 +27,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     private List<Integer> errors = new ArrayList<>();
 
-    private Graph graph = new Graph();
-
-    private MovementCost cost = new MovementCost();
+    public  Graph graph = new Graph();
 
     private Entity entity = new PlayerEntity();
 
@@ -190,24 +187,8 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     }
 
     @Override
-    public MovementCost setMovementCost(MovementCost cost) {
-        this.cost=cost;
-        if(loadData!=null)
-            loadData.cost=cost;
-        return this.cost;
-    }
-
-    @Override
-    public MovementCost getMovementCost() {
-        return this.cost;
-    }
-
-    @Override
     public Entity setEntity(Entity entity) {
-        this.entity = entity;
-        if(loadData!=null)
-            loadData.entity=entity;
-        return this.entity;
+        return this.entity = entity;
     }
 
     @Override
@@ -241,7 +222,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
             Location actual_c2 = new Location(c2.getWorld(),c2.getBlockX(),c2.getBlockY(),c2.getBlockZ()).add(0.5,0.5,0.5);
             Location lowerCorner= new Location(actual_c1.getWorld(),Math.min(actual_c1.getX(),actual_c2.getX()),Math.min(actual_c1.getY(),actual_c2.getY()),Math.min(actual_c1.getZ(),actual_c2.getZ()));
             Location upperCorner= new Location(actual_c1.getWorld(),Math.max(actual_c1.getX(),actual_c2.getX()),Math.max(actual_c1.getY(),actual_c2.getY()),Math.max(actual_c1.getZ(),actual_c2.getZ()));
-            loadData = new LoadData(upperCorner,lowerCorner,this.graph,this.cost,this.entity);
+            loadData = new LoadData(this,upperCorner,lowerCorner);
             load();
             if(loadData.getStatus() == LoadData.Status.LOADED)
                 return new Location[]{loadData.lowerCorner,loadData.upperCorner};
