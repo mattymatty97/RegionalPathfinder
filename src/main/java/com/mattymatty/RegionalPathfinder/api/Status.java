@@ -2,33 +2,14 @@ package com.mattymatty.RegionalPathfinder.api;
 
 import org.bukkit.Location;
 
-public class Status {
-    int status = 0;
-    Iterable<Location> path = null;
+import java.util.Observable;
 
-    public boolean isScheduled() {
-        return status == 1;
-    }
+public abstract class Status extends Observable {
+    public abstract boolean isScheduled();
 
-    public boolean isRunning() {
-        return status == 2;
-    }
+    public abstract boolean isRunning();
 
-    public boolean isDone() {
-        return status == 3;
-    }
+    public abstract boolean isDone();
 
-    public Iterable<Location> getPath() {
-        return path;
-    }
-
-    Status setStatus(int status) {
-        this.status = status;
-        return this;
-    }
-
-    Status setPath(Iterable<Location> path) {
-        this.path = path;
-        return this;
-    }
+    public abstract Iterable<Location> getPath();
 }

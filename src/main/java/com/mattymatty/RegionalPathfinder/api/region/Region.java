@@ -45,9 +45,6 @@ public interface Region {
     //if this region is ready to be used
     boolean isValid();
 
-    //if it is not valid this will provide a list of the reasons
-    String[] getErrors();
-
     //a method to redo all the loading,evaluating and verifing
     void load();
 
@@ -57,7 +54,7 @@ public interface Region {
 
     List<Location> getPath(Location start, Location end);
 
-    Status getAsyncPath(Location start, Location end, Consumer<List<Location>> callback);
+    Status getAsyncPath(Location start, Location end);
 
 
     static Region createRegion(String name, RegionType type){

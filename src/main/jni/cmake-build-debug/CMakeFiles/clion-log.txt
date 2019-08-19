@@ -1,4 +1,0 @@
-"/mnt/DATA/Idea Tools/CLion-2019.1.4/clion-2019.1.4/bin/cmake/linux/bin/cmake" -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni
--- Configuring done
--- Generating done
--- Build files have been written to: /mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug

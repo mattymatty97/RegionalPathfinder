@@ -1,3 +1,0 @@
-/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/CMakeFiles/c-graph.dir
-/mnt/DATA/Programming/IdeaProjects/RegionalPathfinder/src/main/jni/cmake-build-debug/CMakeFiles/edit_cache.dir

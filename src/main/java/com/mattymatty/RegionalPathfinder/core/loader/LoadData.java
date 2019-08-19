@@ -1,13 +1,16 @@
 package com.mattymatty.RegionalPathfinder.core.loader;
 
-import com.mattymatty.RegionalPathfinder.api.region.BaseRegion;
-import com.mattymatty.RegionalPathfinder.core.graph.Graph;
-import com.mattymatty.RegionalPathfinder.core.graph.BlockNode;
-import com.mattymatty.RegionalPathfinder.api.entity.Entity;
+import com.google.common.graph.GraphBuilder;
+import com.mattymatty.RegionalPathfinder.core.graph.Edge;
+import com.mattymatty.RegionalPathfinder.core.graph.Node;
+import org.jgrapht.*;
 import com.mattymatty.RegionalPathfinder.core.region.BaseRegionImpl;
 import org.bukkit.Location;
+import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
+import org.jgrapht.graph.DefaultWeightedEdge;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class LoadData {
     //data from Region
@@ -17,7 +20,10 @@ public class LoadData {
     public final BaseRegionImpl region;
 
     //generated datas;
-    HashMap<Location,BlockNode> nodesMap;
+    Graph<Node, Edge> graph;
+    Graph<Node, Edge> reachableGraph;
+    DijkstraShortestPath<Node, Edge> shortestPath;
+    Map<Integer,Node> nodesMap;
     Status status;
     int x_size;
     int y_size;
@@ -44,8 +50,28 @@ public class LoadData {
         return map;
     }
 
-    public HashMap<Location, BlockNode> getNodesMap() {
+    public Node getNode(Location loc){
+        int x = loc.getBlockX() - lowerCorner.getBlockX();
+        int y = loc.getBlockY() - lowerCorner.getBlockY();
+        int z = loc.getBlockZ() - lowerCorner.getBlockZ();
+        int id = x + z * x_size + y * x_size * z_size;
+        return nodesMap.get(id);
+    }
+
+    public Map<Integer, Node> getNodesMap() {
         return nodesMap;
+    }
+
+    public Graph<Node, Edge> getGraph() {
+        return graph;
+    }
+
+    public Graph<Node, Edge> getReachableGraph() {
+        return reachableGraph;
+    }
+
+    public DijkstraShortestPath<Node, Edge> getShortestPath() {
+        return shortestPath;
     }
 
     public LoadData(BaseRegionImpl region, Location upperCorner, Location lowerCorner) {
@@ -58,15 +84,9 @@ public class LoadData {
         this.status = null;
         this.nodesMap = new HashMap<>();
         this.map = new int[x_size][y_size][z_size];
-        for (int i = 0; i < (x_size * y_size * z_size); i++) {
-            int y = (( i / x_size ) / z_size ) % y_size;
-            int z = ( i / x_size ) % z_size;
-            int x = i % x_size;
-            map[x][y][z] = 1;
-        }
     }
 
-    public enum Status implements Comparable<Status> {
+    public enum Status implements Comparable<Status>{
         LOADING(0),
         LOADED(1),
         EVALUATING(2),

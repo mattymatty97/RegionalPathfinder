@@ -1,5 +1,6 @@
 package com.mattymatty.RegionalPathfinder;
 
+import com.mattymatty.RegionalPathfinder.core.loader.SynchronousLoader;
 import com.mattymatty.RegionalPathfinder.core.region.RegionImpl;
 import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.api.region.RegionType;
@@ -21,6 +22,8 @@ public class RegionalPathfinder extends JavaPlugin {
 
     private static RegionalPathfinder instance;
 
+    private Class actLoader = SynchronousLoader.class;
+
     private Map<String, Region> regionMap = new HashMap<>();
 
     @Override
@@ -32,11 +35,11 @@ public class RegionalPathfinder extends JavaPlugin {
         folder = new File(folder.getAbsolutePath()+"/libs");
         if(!folder.exists())
             folder.mkdir();
-        File lib = new File(folder.getAbsolutePath()+"/libjni.so");
+        File lib = new File(folder.getAbsolutePath()+"/libc-graph.so");
         if(!lib.exists()) {
             try {
                 lib.createNewFile();
-                InputStream stream = this.getResource("libjni.so");
+                InputStream stream = this.getResource("libc-graph.so");
                 FileOutputStream fo = new FileOutputStream(lib);
                 int readBytes;
                 byte[] buffer = new byte[4096];
@@ -46,7 +49,7 @@ public class RegionalPathfinder extends JavaPlugin {
             }catch (IOException ignored){}
         }
         try {
-            System.load(RegionalPathfinder.getInstance().getDataFolder().getAbsolutePath() + "/libs/libjni.so");
+            System.load(RegionalPathfinder.getInstance().getDataFolder().getAbsolutePath() + "/libs/libc-graph.so");
         }catch (Exception ex){
             ex.printStackTrace();
         }

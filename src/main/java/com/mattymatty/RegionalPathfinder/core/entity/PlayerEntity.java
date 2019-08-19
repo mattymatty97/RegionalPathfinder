@@ -112,7 +112,7 @@ public class PlayerEntity implements Entity {
 
     @Override
     public double movementCost(Location start, Location end) {
-        return cost(movementCost,start,end);
+        return cost(movementCost,cloneLoc(start).add(0,-1,0),cloneLoc(end).add(0,-1,0));
     }
 
     private double cost(MovementCost cost, Location source, Location dest){
@@ -128,14 +128,14 @@ public class PlayerEntity implements Entity {
             if(isStairMovement(source,dest)){
                 result+= cost.getStair_slab();
             }else{
-                result+=cost.getJump();
+                result+= cost.getJump();
             }
         }
 
         if(Math.abs(dx)>0 && Math.abs(dz)>0)
-            result+=cost.getDiagonalAddition();
+            result+= cost.getDiagonalAddition();
 
-        result+=cost.getBlockCost(dest.getBlock().getType());
+        result+= cost.getBlockCost(dest.getBlock().getType());
 
         return result;
     }

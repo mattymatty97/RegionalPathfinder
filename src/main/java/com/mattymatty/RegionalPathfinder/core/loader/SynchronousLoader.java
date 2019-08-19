@@ -1,11 +1,16 @@
 package com.mattymatty.RegionalPathfinder.core.loader;
 
-import com.mattymatty.RegionalPathfinder.core.graph.Graph;
-import com.mattymatty.RegionalPathfinder.core.graph.BlockNode;
+import com.mattymatty.RegionalPathfinder.core.graph.Edge;
+import com.mattymatty.RegionalPathfinder.core.graph.Node;
+import com.mattymatty.RegionalPathfinder.exeptions.LoaderException;
 import org.bukkit.Location;
 import org.bukkit.util.Vector;
+import org.jgrapht.Graph;
+import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector;
+import org.jgrapht.alg.interfaces.StrongConnectivityAlgorithm;
+import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
+import org.jgrapht.graph.builder.GraphTypeBuilder;
 
-import java.lang.invoke.LambdaConversionException;
 import java.util.*;
 
 public class SynchronousLoader implements Loader {
@@ -23,10 +28,12 @@ public class SynchronousLoader implements Loader {
             int x = i % data.x_size;
             Location actual = cloneLoc(data.lowerCorner).add(x, y, z);
             //test if the point is a valid point
-            if (!data.region.getEntity().isValidLocation(actual))
-                data.map[x][y][z] = 0;
-            else
+            if (data.region.getEntity().isValidLocation(actual)) {
                 count++;
+                Node node = new Node(actual, i);
+                data.graph.addVertex(node);
+                data.nodesMap.put(i, node);
+            }
         }
         if (count != 0)
             data.status = LoadData.Status.LOADED;
@@ -38,45 +45,24 @@ public class SynchronousLoader implements Loader {
     @Override
     public void evaluate(LoadData data) {
         if (data.status.getValue() < LoadData.Status.LOADED.getValue())
-            return;
+            throw new LoaderException("Region not loaded", data.region);
         data.status = LoadData.Status.EVALUATING;
         preEvaluate(data);
         try {
-            //create the queue for in deept research
-            Queue<BlockNode> findQueue = new LinkedList<>();
-            //get the coordinates of the sampleBlock
-            int x = data.samplePoint.getBlockX() - data.lowerCorner.getBlockX();
-            int y = data.samplePoint.getBlockY() - data.lowerCorner.getBlockY();
-            int z = data.samplePoint.getBlockZ() - data.lowerCorner.getBlockZ();
-            int id = x + z * data.x_size + y * data.x_size * data.z_size;
-            if (data.map[x][y][z] == 0) {
-                data.status = LoadData.Status.LOADED;
-                return;
-            }
-            data.map[x][y][z] = 2;
-            //add the point to the graph
-            BlockNode node = new BlockNode(data.region.graph, id, data.region.graph.getAndIncrementNodeID(), data.samplePoint);
-            data.region.graph.addNode(node);
-            data.nodesMap.put(data.samplePoint,node);
 
-            //add the block to the queue
-            findQueue.add(node);
+            //create visit queue
+            Queue<Node> queue = new LinkedList<>(data.graph.vertexSet());
 
-            int count = 0;
-            //till there are no more reachable points
-            while (!findQueue.isEmpty()) {
-                node = findQueue.poll();
+            while (!queue.isEmpty()) {
+                Node act = queue.poll();
 
-                id = node.getI();
-
-                y = ((id / data.x_size) / data.z_size) % data.y_size;
-                z = (id / data.x_size) % data.z_size;
-                x = id % data.x_size;
+                int y = ((act.getI() / data.x_size) / data.z_size) % data.y_size;
+                int z = (act.getI() / data.x_size) % data.z_size;
+                int x = act.getI() % data.x_size;
 
                 Vector[] movements = data.region.getEntity().getAllowedMovements();
-
                 //iterate for all the possible movements
-                for (int i=0;i<movements.length;i++) {
+                for (int i = 0; i < movements.length; i++) {
                     Vector movement = movements[i];
                     int dx = movement.getBlockX();
                     int dz = movement.getBlockZ();
@@ -93,35 +79,36 @@ public class SynchronousLoader implements Loader {
 
                         Location next_loc = cloneLoc(data.lowerCorner).add(next_x, next_y, next_z);
                         //if dest is valid
-                        if (data.map[next_x][next_y][next_z] == 1
-                                &&
-                                data.region.getEntity().extraMovementChecks(node.getLocation(), next_loc)) {
-                            count++;
-                            data.map[next_x][next_y][next_z] = 2;
+                        if (data.map[next_x][next_y][next_z] == 1 &&
+                                data.region.getEntity().extraMovementChecks(act.getLoc(), next_loc)) {
                             int next_id = next_x + next_z * data.x_size + next_y * data.x_size * data.z_size;
-                            BlockNode next_node = new BlockNode(data.region.graph, next_id, data.region.graph.getAndIncrementNodeID(), next_loc);
 
-                            findQueue.add(next_node);
-
-                            data.region.graph.addNode(next_node);
-                            data.nodesMap.put(next_loc,next_node);
-                            Graph.Edge edge1 = new Graph.Edge(node, next_node, data.region.getEntity().movementCost(node.getLocation(), next_loc));
-                            Graph.Edge edge2 = new Graph.Edge(next_node, node, data.region.getEntity().movementCost(next_loc, node.getLocation()));
-                            data.region.graph.addEdge(edge1);
-                            data.region.graph.addEdge(edge2);
+                            Node dest = data.nodesMap.get(next_id);
+                            data.graph.addEdge(act, dest).setWeight(data.region.getEntity().movementCost(act.getLoc(), next_loc));
                         }
                     }
                 }
-
-
             }
 
-            if (count == 0) {
+            StrongConnectivityAlgorithm<Node, Edge> scAlg =
+                    new KosarajuStrongConnectivityInspector<>(data.graph);
+            List<Graph<Node,Edge>> stronglyConnectedSubgraphs =
+                    scAlg.getStronglyConnectedComponents();
+
+            Node samplePoint = data.getNode(data.samplePoint);
+
+            Graph<Node,Edge> scs = stronglyConnectedSubgraphs.stream().filter(g->g.containsVertex(samplePoint)).findFirst().orElse(null);
+
+            if(scs == null){
                 data.status = LoadData.Status.LOADED;
                 return;
             }
+
+            data.reachableGraph = scs;
+            data.shortestPath =  new DijkstraShortestPath<>(data.getReachableGraph());
+
         } catch (Exception ex) {
-            throw new RuntimeException(ex);
+            throw new LoaderException(ex, data.region);
         }
 
         data.status = LoadData.Status.EVALUATED;
@@ -130,7 +117,9 @@ public class SynchronousLoader implements Loader {
     @Override
     public void validate(LoadData data) {
         if (data.status.getValue() < LoadData.Status.EVALUATED.getValue())
-            data.status = LoadData.Status.VALIDATING;
+            throw new LoaderException("Region is not evaluated", data.region);
+
+        data.status = LoadData.Status.VALIDATING;
         int i;
         for (i = 0; i < data.z_size * data.y_size * data.x_size; i++) {
             int y = ((i / data.x_size) / data.z_size) % data.y_size;
@@ -151,25 +140,26 @@ public class SynchronousLoader implements Loader {
         data.status = LoadData.Status.VALIDATED;
     }
 
-    private void preLoad(LoadData data){
+    private void preLoad(LoadData data) {
+        try {
+            Math.multiplyExact(Math.multiplyExact(data.x_size, data.y_size), data.z_size);
+        } catch (ArithmeticException ex) {
+            throw new LoaderException("Region is too big", data.region);
+        }
+
+        data.nodesMap.clear();
+        data.graph = GraphTypeBuilder.<Node, Edge>directed().edgeClass(Edge.class).weighted(true).buildGraph();
+
         for (int i = 0; i < data.z_size * data.y_size * data.x_size; i++) {
             int y = ((i / data.x_size) / data.z_size) % data.y_size;
             int z = (i / data.x_size) % data.z_size;
             int x = i % data.x_size;
-            data.map[x][y][z] = 1;
+            data.map[x][y][z] = 0;
         }
     }
 
-    private void preEvaluate(LoadData data){
-        data.nodesMap.clear();
-        data.region.graph = new Graph();
-        for (int i = 0; i < data.z_size * data.y_size * data.x_size; i++) {
-            int y = ((i / data.x_size) / data.z_size) % data.y_size;
-            int z = (i / data.x_size) % data.z_size;
-            int x = i % data.x_size;
-            if(data.map[x][y][z] > 1)
-                data.map[x][y][z] = 1;
-        }
+    private void preEvaluate(LoadData data) {
+        data.graph.removeAllEdges(data.graph.edgeSet());
     }
 
 

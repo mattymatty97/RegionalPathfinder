@@ -1,0 +1,14 @@
+config-version: 1
+#---------------------
+
+#if the default loader is async or not
+async-default: false
+
+#the maximum sequential time an async operation should halt the server
+#in microseconds
+async-max-halt-time: 2500
+
+#how many ticks to wait till next sync operation
+async-tick-delay: 3
+
+

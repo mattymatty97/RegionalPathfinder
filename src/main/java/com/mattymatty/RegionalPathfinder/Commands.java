@@ -1,11 +1,11 @@
 package com.mattymatty.RegionalPathfinder;
 
+import com.mattymatty.RegionalPathfinder.api.Status;
 import com.mattymatty.RegionalPathfinder.api.region.BaseRegion;
 import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.api.region.RegionType;
 import org.bukkit.Location;
 import org.bukkit.Particle;
-import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -107,13 +107,27 @@ public class Commands implements CommandExecutor {
                                 }
                                 return true;
                             }
-                            case "path": {
-                                region.getAsyncPath(pos1,pos2,(path)->{
-                                    if (path == null) {
-                                        sender.sendMessage("Error no path found");
-                                    } else {
-                                        showParticles(path);
-                                        sender.sendMessage("Shown particles onto path, remove with /regionalpathfinder particle");
+                            case "path":{
+                                List<Location> path = region.getPath(pos1,pos2);
+                                if (path == null) {
+                                    sender.sendMessage("Error no path found");
+                                } else {
+                                    showParticles(path,true);
+                                    sender.sendMessage("Shown particles onto path, remove with /regionalpathfinder particle");
+                                }
+                                return true;
+                            }
+                            case "apath": {
+                                region.getAsyncPath(pos1,pos2).addObserver((o,i)->{
+                                    if(((Status) o).isDone()) {
+                                        if (((Status) o).getPath() == null) {
+                                            plugin.getServer().getScheduler().runTask(plugin,()->sender.sendMessage("Error no path found"));
+                                        } else {
+                                            plugin.getServer().getScheduler().runTask(plugin,()->{
+                                                showParticles(((Status) o).getPath(), true);
+                                                sender.sendMessage("Shown particles onto path, remove with /regionalpathfinder particle");
+                                            });
+                                        }
                                     }
                                 });
                             }
@@ -146,20 +160,28 @@ public class Commands implements CommandExecutor {
         return false;
     }
 
-    private void showParticles(Iterable<Location> locations){
-        for (Location loc : locations) {
-            Location act = cloneLoc(loc);
-            Thread particle = new Thread(() -> {
-                try {
-                    while (!Thread.interrupted()) {
-                        plugin.getServer().getScheduler().runTask(plugin, () -> Objects.requireNonNull(act.getWorld()).spawnParticle(Particle.VILLAGER_HAPPY, act, 7));
-                        Thread.sleep(500);
+    private void showParticles(Iterable<Location> locations){ showParticles(locations,false);}
+
+    private void showParticles(Iterable<Location> locations,boolean isPath){
+        Thread particle = new Thread(() -> {
+            try {
+                while (!Thread.interrupted()) {
+                    int i=0;
+                    for (Location loc : locations) {
+                        i++;
+                        Location act = cloneLoc(loc);
+                        if(!isPath)
+                            plugin.getServer().getScheduler().runTask(plugin, () -> Objects.requireNonNull(act.getWorld()).spawnParticle(Particle.VILLAGER_HAPPY, act, 7));
+                        else
+                            plugin.getServer().getScheduler().runTaskLater(plugin, () -> Objects.requireNonNull(act.getWorld()).spawnParticle(Particle.VILLAGER_HAPPY, act, 7),i*5);
                     }
-                } catch (InterruptedException ignored) { }
-            });
-            particle.start();
-            particles.add(particle);
-        }
+                    Thread.sleep((isPath)?(i*100):500);
+                }
+            } catch (InterruptedException ignored) {
+            }
+        });
+        particle.start();
+        particles.add(particle);
     }
 
 

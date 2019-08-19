@@ -1,8 +1,10 @@
 package com.mattymatty.RegionalPathfinder.core.loader;
 
+import com.mattymatty.RegionalPathfinder.core.graph.Node;
 import org.bukkit.Location;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public interface Loader {
     //max dimensions 1290 blocks each size
@@ -15,39 +17,20 @@ public interface Loader {
     void validate(LoadData data);
 
     default List<Location> getValid(LoadData data){
-        List<Location> result = new LinkedList<>();
 
-        if(data.getStatus().getValue() >= LoadData.Status.LOADED.getValue()){
-            for (int i = 0; i < data.z_size * data.y_size * data.x_size; i++) {
-                int y = (( i /data. x_size ) / data.z_size ) % data.y_size;
-                int z = ( i / data.x_size ) % data.z_size;
-                int x = i % data.x_size;
-                if(data.map[x][y][z]>0) {
-                    Location actual = cloneLoc(data.lowerCorner).add(x, y, z);
-                    result.add(actual);
-                }
-                //test if the point is a valid point
-            }
-        }
+        if(data.graph == null)
+            return null;
+
+        List<Location> result = data.graph.vertexSet().parallelStream().map(Node::getLoc).collect(Collectors.toCollection(LinkedList::new));
 
         return (result.isEmpty())?null:result;
     }
 
     default List<Location> getReachable(LoadData data){
-        List<Location> result = new LinkedList<>();
+        if(data.reachableGraph == null)
+            return null;
 
-        if(data.getStatus().getValue() >= LoadData.Status.LOADED.getValue()){
-            for (int i = 0; i < data.z_size * data.y_size * data.x_size; i++) {
-                int y = (( i /data. x_size ) / data.z_size ) % data.y_size;
-                int z = ( i / data.x_size ) % data.z_size;
-                int x = i % data.x_size;
-                if(data.map[x][y][z]>1) {
-                    Location actual = cloneLoc(data.lowerCorner).add(x, y, z);
-                    result.add(actual);
-                }
-                //test if the point is a valid point
-            }
-        }
+        List<Location> result = data.reachableGraph.vertexSet().parallelStream().map(Node::getLoc).collect(Collectors.toCollection(LinkedList::new));
 
         return (result.isEmpty())?null:result;
     }
