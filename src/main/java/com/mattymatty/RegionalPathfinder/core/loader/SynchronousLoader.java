@@ -62,50 +62,42 @@ public class SynchronousLoader implements Loader {
 
                 Vector[] movements = data.region.getEntity().getAllowedMovements();
                 //iterate for all the possible movements
-                for (int i = 0; i < movements.length; i++) {
-                    Vector movement = movements[i];
+                for (Vector movement : movements) {
                     int dx = movement.getBlockX();
                     int dz = movement.getBlockZ();
                     int dy = movement.getBlockY();
 
-                    int next_x = (x + dx);
-                    int next_y = (y + dy);
-                    int next_z = (z + dz);
-                    //if the movement is inside region
-                    if (next_x >= 0 && next_x < data.x_size
-                            && next_y >= 0 && next_y < data.y_size
-                            && next_z >= 0 && next_z < data.z_size
-                    ) {
+                    int dest_x = (x + dx);
+                    int dest_y = (y + dy);
+                    int dest_z = (z + dz);
 
-                        Location next_loc = cloneLoc(data.lowerCorner).add(next_x, next_y, next_z);
-                        //if dest is valid
-                        if (data.map[next_x][next_y][next_z] == 1 &&
-                                data.region.getEntity().extraMovementChecks(act.getLoc(), next_loc)) {
-                            int next_id = next_x + next_z * data.x_size + next_y * data.x_size * data.z_size;
+                    int dest_id = dest_x + dest_z * data.x_size + dest_y * data.x_size * data.z_size;
+                    Node dest = data.nodesMap.get(dest_id);
 
-                            Node dest = data.nodesMap.get(next_id);
-                            data.graph.addEdge(act, dest).setWeight(data.region.getEntity().movementCost(act.getLoc(), next_loc));
-                        }
+                    //if dest is valid
+                    if (dest!=null &&
+                            data.region.getEntity().extraMovementChecks(act.getLoc(), dest.getLoc())) {
+                        data.graph.addEdge(act, dest).setWeight(data.region.getEntity().movementCost(act.getLoc(), dest.getLoc()));
                     }
                 }
             }
 
             StrongConnectivityAlgorithm<Node, Edge> scAlg =
                     new KosarajuStrongConnectivityInspector<>(data.graph);
-            List<Graph<Node,Edge>> stronglyConnectedSubgraphs =
+            List<Graph<Node, Edge>> stronglyConnectedSubgraphs =
                     scAlg.getStronglyConnectedComponents();
 
             Node samplePoint = data.getNode(data.samplePoint);
 
-            Graph<Node,Edge> scs = stronglyConnectedSubgraphs.stream().filter(g->g.containsVertex(samplePoint)).findFirst().orElse(null);
+            Graph<Node, Edge> scs = stronglyConnectedSubgraphs.stream().filter(g -> g.containsVertex(samplePoint)).findFirst().orElse(null);
 
-            if(scs == null){
+            if (scs == null) {
                 data.status = LoadData.Status.LOADED;
                 return;
             }
 
             data.reachableGraph = scs;
-            data.shortestPath =  new DijkstraShortestPath<>(data.getReachableGraph());
+            data.shortestPath = new DijkstraShortestPath<>(data.getReachableGraph());
 
         } catch (Exception ex) {
             throw new LoaderException(ex, data.region);
@@ -120,24 +112,11 @@ public class SynchronousLoader implements Loader {
             throw new LoaderException("Region is not evaluated", data.region);
 
         data.status = LoadData.Status.VALIDATING;
-        int i;
-        for (i = 0; i < data.z_size * data.y_size * data.x_size; i++) {
-            int y = ((i / data.x_size) / data.z_size) % data.y_size;
-            int z = (i / data.x_size) % data.z_size;
-            int x = i % data.x_size;
-            if (data.map[x][y][z] == 2) {
-                Location actual = cloneLoc(data.lowerCorner).add(x, y, z);
-                if (!data.region.getEntity().isValidLocation(actual))
-                    break;
-            }
-        }
 
-        if (i < data.z_size * data.y_size * data.x_size) {
+        if(data.reachableGraph.vertexSet().parallelStream().anyMatch(n->!data.region.getEntity().isValidLocation(n.getLoc())))
             data.status = LoadData.Status.EVALUATED;
-            return;
-        }
-
-        data.status = LoadData.Status.VALIDATED;
+        else
+            data.status = LoadData.Status.VALIDATED;
     }
 
     private void preLoad(LoadData data) {
@@ -149,13 +128,6 @@ public class SynchronousLoader implements Loader {
 
         data.nodesMap.clear();
         data.graph = GraphTypeBuilder.<Node, Edge>directed().edgeClass(Edge.class).weighted(true).buildGraph();
-
-        for (int i = 0; i < data.z_size * data.y_size * data.x_size; i++) {
-            int y = ((i / data.x_size) / data.z_size) % data.y_size;
-            int z = (i / data.x_size) % data.z_size;
-            int x = i % data.x_size;
-            data.map[x][y][z] = 0;
-        }
     }
 
     private void preEvaluate(LoadData data) {

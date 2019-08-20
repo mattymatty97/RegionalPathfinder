@@ -166,6 +166,7 @@ public class Commands implements CommandExecutor {
         Thread particle = new Thread(() -> {
             try {
                 while (!Thread.interrupted()) {
+                    long tic = System.currentTimeMillis();
                     int i=0;
                     for (Location loc : locations) {
                         i++;
@@ -173,9 +174,10 @@ public class Commands implements CommandExecutor {
                         if(!isPath)
                             plugin.getServer().getScheduler().runTask(plugin, () -> Objects.requireNonNull(act.getWorld()).spawnParticle(Particle.VILLAGER_HAPPY, act, 7));
                         else
-                            plugin.getServer().getScheduler().runTaskLater(plugin, () -> Objects.requireNonNull(act.getWorld()).spawnParticle(Particle.VILLAGER_HAPPY, act, 7),i*5);
+                            plugin.getServer().getScheduler().runTaskLater(plugin, () -> Objects.requireNonNull(act.getWorld()).spawnParticle(Particle.VILLAGER_HAPPY, act, 7),i*7);
                     }
-                    Thread.sleep((isPath)?(i*100):500);
+                    long toc = System.currentTimeMillis();
+                    Thread.sleep(((isPath)?(3000):(500))-(toc-tic));
                 }
             } catch (InterruptedException ignored) {
             }

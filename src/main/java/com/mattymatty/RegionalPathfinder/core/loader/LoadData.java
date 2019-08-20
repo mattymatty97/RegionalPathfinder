@@ -28,7 +28,6 @@ public class LoadData {
     int x_size;
     int y_size;
     int z_size;
-    int[][][] map;
 
     public Status getStatus() {
         return status;
@@ -44,10 +43,6 @@ public class LoadData {
 
     public int getZ_size() {
         return z_size;
-    }
-
-    public int[][][] getMap() {
-        return map;
     }
 
     public Node getNode(Location loc){
@@ -83,7 +78,6 @@ public class LoadData {
         this.z_size = upperCorner.getBlockZ() - lowerCorner.getBlockZ();
         this.status = null;
         this.nodesMap = new HashMap<>();
-        this.map = new int[x_size][y_size][z_size];
     }
 
     public enum Status implements Comparable<Status>{
