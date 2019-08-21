@@ -5,40 +5,81 @@ import org.bukkit.Location;
 
 import java.util.List;
 import java.util.Observable;
+import java.util.Observer;
+import java.util.function.Consumer;
 
-public class StatusImpl extends Status{
+public class StatusImpl<T> extends Observable implements Status<T> {
     int status=0;
 
-    List<Location> path;
+    T product;
+
+    public Exception ex = null;
+
+    public long syncTime = 0;
+    public long totTime = 0;
 
     @Override
-    public boolean isScheduled() {
+    public synchronized boolean isScheduled() {
         return status==1;
     }
 
     @Override
-    public boolean isRunning() {
+    public synchronized boolean isRunning() {
         return status==2;
     }
 
     @Override
-    public boolean isDone() {
+    public synchronized boolean isDone() {
         return status==3;
     }
 
     @Override
-    public Iterable<Location> getPath() {
-        return path;
+    public synchronized boolean hasException() {
+        return status==4;
     }
 
-    public StatusImpl setStatus(int status) {
+    @Override
+    public synchronized Exception getException() {
+        return ex;
+    }
+
+    @Override
+    public synchronized long getTimeSync() {
+        return syncTime;
+    }
+
+    @Override
+    public synchronized long getTimeTotal() {
+        return totTime;
+    }
+
+    @Override
+    public synchronized T getProduct() {
+        return product;
+    }
+
+    @Override
+    public synchronized Status<T> addListener(Consumer<Status<T>> callback) {
+        this.addObserver((o,a)-> callback.accept(this));
+        callback.accept(this);
+        return this;
+    }
+
+    @Override
+    public synchronized Status<T> clearListeners() {
+        this.deleteObservers();
+        return this;
+    }
+
+
+    public synchronized StatusImpl setStatus(int status) {
         this.status = status;
         changed();
         return this;
     }
 
-    public StatusImpl setPath(List<Location> path) {
-        this.path = path;
+    public synchronized StatusImpl setProduct(T product) {
+        this.product = product;
         return this;
     }
 

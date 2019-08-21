@@ -29,30 +29,7 @@ public class RegionalPathfinder extends JavaPlugin {
     @Override
     public void onLoad() {
         super.onLoad();
-        File folder = getDataFolder();
-        if(!folder.exists())
-            folder.mkdir();
-        folder = new File(folder.getAbsolutePath()+"/libs");
-        if(!folder.exists())
-            folder.mkdir();
-        File lib = new File(folder.getAbsolutePath()+"/libc-graph.so");
-        if(!lib.exists()) {
-            try {
-                lib.createNewFile();
-                InputStream stream = this.getResource("libc-graph.so");
-                FileOutputStream fo = new FileOutputStream(lib);
-                int readBytes;
-                byte[] buffer = new byte[4096];
-                while ((readBytes = stream.read(buffer)) > 0) {
-                    fo.write(buffer, 0, readBytes);
-                }
-            }catch (IOException ignored){}
-        }
-        try {
-            System.load(RegionalPathfinder.getInstance().getDataFolder().getAbsolutePath() + "/libs/libc-graph.so");
-        }catch (Exception ex){
-            ex.printStackTrace();
-        }
+        instance = this;
     }
 
     @Override
@@ -64,6 +41,7 @@ public class RegionalPathfinder extends JavaPlugin {
     public void onEnable() {
         super.onEnable();
         Objects.requireNonNull(this.getCommand("regionalpathfinder")).setExecutor(new Commands(this));
+        Objects.requireNonNull(this.getCommand("regionalpathfinder")).setTabCompleter(new TabComplete());
     }
 
 
@@ -91,12 +69,5 @@ public class RegionalPathfinder extends JavaPlugin {
         return instance;
     }
 
-    public RegionalPathfinder() {
-        instance = this;
-    }
 
-    public RegionalPathfinder(JavaPluginLoader loader, PluginDescriptionFile description, File dataFolder, File file) {
-        super(loader, description, dataFolder, file);
-        instance = this;
-    }
 }

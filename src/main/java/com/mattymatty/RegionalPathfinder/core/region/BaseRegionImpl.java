@@ -13,6 +13,7 @@ import com.mattymatty.RegionalPathfinder.core.loader.Loader;
 import com.mattymatty.RegionalPathfinder.core.loader.SynchronousLoader;
 import com.mattymatty.RegionalPathfinder.exeptions.AsyncExecption;
 import com.mattymatty.RegionalPathfinder.exeptions.RegionException;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
@@ -20,6 +21,8 @@ import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public class BaseRegionImpl implements RegionImpl, BaseRegion {
@@ -32,10 +35,9 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     private LoadData loadData;
 
-    private Loader loader = new SynchronousLoader();
+    private Loader<Location> loader = new SynchronousLoader();
 
-    private Semaphore sem = new Semaphore(1);
-
+    public final Lock lock = new ReentrantLock();
 
     //METHODS FROM Region
 
@@ -62,17 +64,20 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     @Override
     public World getWorld() {
-        if (sem.availablePermits() == 0)
+        if (!lock.tryLock())
             throw new AsyncExecption("Async operation still running on this region", this);
-        return (loadData == null) ? null : loadData.lowerCorner.getWorld();
+        World world = (loadData == null) ? null : loadData.lowerCorner.getWorld();
+        lock.unlock();
+        return world;
     }
 
     @Override
     public Location[] getCorners() {
-        if (sem.availablePermits() == 0)
+        if (!lock.tryLock())
             throw new AsyncExecption("Async operation still running on this region", this);
+        Location[] ret = null;
         if (loadData != null)
-            return new Location[]{
+            ret = new Location[]{
                     loadData.lowerCorner,
                     new Location(getWorld(),
                             loadData.lowerCorner.getX(),
@@ -92,14 +97,17 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
                             loadData.lowerCorner.getZ()),
                     loadData.upperCorner
             };
-        return null;
+        lock.unlock();
+        return ret;
     }
 
     @Override
     public List<Location> getValidLocations() {
-        if (sem.availablePermits() == 0)
+        if (!lock.tryLock())
             throw new AsyncExecption("Async operation still running on this region", this);
-        return (loadData == null) ? null : loader.getValid(loadData);
+        List<Location> ret = (loadData == null) ? null : loader.getValid(loadData);
+        lock.unlock();
+        return ret;
     }
 
     @Override
@@ -109,9 +117,11 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     @Override
     public List<Location> getReachableLocations() {
-        if (sem.availablePermits() == 0)
+        if (!lock.tryLock())
             throw new AsyncExecption("Async operation still running on this region", this);
-        return (loadData == null) ? null : loader.getReachable(loadData);
+        List<Location> ret = (loadData == null) ? null : loader.getReachable(loadData);
+        lock.unlock();
+        return ret;
     }
 
     @Override
@@ -121,50 +131,32 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     @Override
     public boolean isValid() {
-        if (sem.availablePermits() == 0)
+        if (!lock.tryLock())
             throw new AsyncExecption("Async operation still running on this region", this);
-        return (loadData != null) && (loadData.getStatus() == LoadData.Status.VALIDATED);
+        boolean ret = (loadData != null) && (loadData.getStatus() == LoadData.Status.VALIDATED);
+        lock.unlock();
+        return ret;
     }
 
     @Override
-    public List<Location> getPath(Location start, Location end) {
-        if (sem.availablePermits() == 0)
-            throw new AsyncExecption("Async operation still running on this region", this);
-        if (isValid()) {
-            List<Location> reachable = getReachableLocations();
-            Location actual_s = new Location(start.getWorld(), start.getBlockX(), start.getBlockY(), start.getBlockZ()).add(0.5, 0.5, 0.5);
-            Location actual_e = new Location(end.getWorld(), end.getBlockX(), end.getBlockY(), end.getBlockZ()).add(0.5, 0.5, 0.5);
-
-            if (reachable == null || start.getWorld() != end.getWorld() || !reachable.contains(actual_s) || !reachable.contains(actual_e))
-                return null;
-
-            Node sNode = loadData.getNode(actual_s);
-            Node eNode = loadData.getNode(actual_e);
-            List<Node> path;
-
-            ShortestPathAlgorithm.SingleSourcePaths<Node, Edge> iPaths = loadData.getShortestPath().getPaths(sNode);
-
-            path = iPaths.getPath(eNode).getVertexList();
-
-            return path.stream().map(Node::getLoc).collect(Collectors.toList());
-
-        }
-        return null;
-    }
-
-    @Override
-    public Status getAsyncPath(Location start, Location end) {
-        StatusImpl status = new StatusImpl();
+    public Status<List<Location>> getPath(Location start, Location end) {
+        StatusImpl<List<Location>> status = new StatusImpl<>();
         new Thread(() -> {
+            long tic = System.currentTimeMillis();
             try {
                 status.setStatus(1);
-                sem.acquire();
+                lock.lockInterruptibly();
                 if (loadData.getStatus() == LoadData.Status.VALIDATED) {
+
                     Semaphore tmp = new Semaphore(0);
                     AtomicBoolean allowed = new AtomicBoolean(false);
 
                     Location actual_s = new Location(start.getWorld(), start.getBlockX(), start.getBlockY(), start.getBlockZ()).add(0.5, 0.5, 0.5);
                     Location actual_e = new Location(end.getWorld(), end.getBlockX(), end.getBlockY(), end.getBlockZ()).add(0.5, 0.5, 0.5);
+
+                    Bukkit.getLogger().info("Pathfinding in region: "+ getName() +
+                            "\nfrom: X="+actual_s.getBlockX() + " Y="+actual_s.getBlockY() +" Z="+actual_s.getBlockZ()+
+                            "\nto: X="+actual_e.getBlockX() + " Y="+actual_e.getBlockY() +" Z="+actual_e.getBlockZ());
 
                     RegionalPathfinder.getInstance().getServer().getScheduler()
                             .runTask(RegionalPathfinder.getInstance(), () -> {
@@ -181,7 +173,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
                     if (!allowed.get()) {
                         status.setStatus(3);
-                        sem.release();
+                        lock.unlock();
                         return;
                     }
 
@@ -195,14 +187,18 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
                     path = iPaths.getPath(eNode).getVertexList();
 
-                    status.setPath(path.stream().map(Node::getLoc).collect(Collectors.toList()));
+                    status.setProduct(path.stream().map(Node::getLoc).collect(Collectors.toList()));
+
+                    long toc = System.currentTimeMillis();
+                    Bukkit.getLogger().info(((!path.isEmpty())?"Found path":"Failed pathfinding") + " in region: "+ getName() +
+                            "\nTook: "+(toc-tic) +" ms");
                 } else {
                     status.setStatus(3);
-                    sem.release();
+                    lock.unlock();
                     throw new RegionException("Region is not valid", this);
                 }
                 status.setStatus(3);
-                sem.release();
+                lock.unlock();
             } catch (InterruptedException ignored) {
             }
         }).start();
@@ -242,48 +238,51 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
         return this.entity;
     }
 
-    public void load() {
+    @Override
+    public Status<Location[]> load() {
+        StatusImpl<Location[]> ret = new StatusImpl<>();
         if (loadData != null)
-            loader.load(loadData);
-    }
-
-    public void evaluate() {
-
-        if (loadData != null)
-            loader.evaluate(loadData);
-    }
-
-    public void validate() {
-
-        if (loadData != null)
-            loader.validate(loadData);
+            loader.load(loadData,ret);
+        return ret;
     }
 
     @Override
-    public Location[] setCorners(Location c1, Location c2) {
+    public Status<Location> evaluate() {
+        StatusImpl<Location> ret = new StatusImpl<>();
+        if (loadData != null)
+            loader.evaluate(loadData,ret);
+        return ret;
+    }
+
+    @Override
+    public Status validate() {
+        StatusImpl ret = new StatusImpl();
+        if (loadData != null)
+            loader.validate(loadData,ret);
+        return ret;
+    }
+
+    @Override
+    public Status<Location[]> setCorners(Location c1, Location c2) {
         if (c1.getWorld() == c2.getWorld()) {
             Location actual_c1 = new Location(c1.getWorld(), c1.getBlockX(), c1.getBlockY(), c1.getBlockZ()).add(0.5, 0.5, 0.5);
             Location actual_c2 = new Location(c2.getWorld(), c2.getBlockX(), c2.getBlockY(), c2.getBlockZ()).add(0.5, 0.5, 0.5);
             Location lowerCorner = new Location(actual_c1.getWorld(), Math.min(actual_c1.getX(), actual_c2.getX()), Math.min(actual_c1.getY(), actual_c2.getY()), Math.min(actual_c1.getZ(), actual_c2.getZ()));
             Location upperCorner = new Location(actual_c1.getWorld(), Math.max(actual_c1.getX(), actual_c2.getX()), Math.max(actual_c1.getY(), actual_c2.getY()), Math.max(actual_c1.getZ(), actual_c2.getZ()));
             loadData = new LoadData(this, upperCorner, lowerCorner);
-            load();
-            if (loadData.getStatus() == LoadData.Status.LOADED)
-                return new Location[]{loadData.lowerCorner, loadData.upperCorner};
+            return load();
         }
         return null;
     }
 
     @Override
-    public Location setSamplePoint(Location sa) {
+    public Status<Location> setSamplePoint(Location sa) {
         if (loadData != null)
             if (sa.getWorld() == loadData.upperCorner.getWorld()) {
                 Location actual_sa = new Location(sa.getWorld(), sa.getBlockX(), sa.getBlockY(), sa.getBlockZ()).add(0.5, 0.5, 0.5);
                 if (getValidLocations().contains(actual_sa)) {
                     loadData.samplePoint = actual_sa;
-                    evaluate();
-                    if (loadData.getStatus() == LoadData.Status.EVALUATED)
-                        return actual_sa;
+                    return evaluate();
                 }
             }
         return null;

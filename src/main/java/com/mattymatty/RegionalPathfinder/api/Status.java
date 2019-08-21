@@ -1,15 +1,25 @@
 package com.mattymatty.RegionalPathfinder.api;
 
-import org.bukkit.Location;
+import java.util.function.Consumer;
 
-import java.util.Observable;
+public interface Status<T> {
+    boolean isScheduled();
 
-public abstract class Status extends Observable {
-    public abstract boolean isScheduled();
+    boolean isRunning();
 
-    public abstract boolean isRunning();
+    boolean isDone();
 
-    public abstract boolean isDone();
+    boolean hasException();
 
-    public abstract Iterable<Location> getPath();
+    Exception getException();
+
+    long getTimeSync();
+
+    long getTimeTotal();
+
+    T getProduct();
+
+    Status<T> addListener(Consumer<Status<T>> callback);
+
+    Status<T> clearListeners();
 }

@@ -1,20 +1,22 @@
 package com.mattymatty.RegionalPathfinder.core.loader;
 
+import com.mattymatty.RegionalPathfinder.api.Status;
+import com.mattymatty.RegionalPathfinder.core.StatusImpl;
 import com.mattymatty.RegionalPathfinder.core.graph.Node;
 import org.bukkit.Location;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public interface Loader {
+public interface Loader<T> {
     //max dimensions 1290 blocks each size
 
 
-    void load(LoadData data);
+    void load(LoadData data, StatusImpl<T[]> status);
 
-    void evaluate(LoadData data);
+    void evaluate(LoadData data, StatusImpl<T> status);
 
-    void validate(LoadData data);
+    void validate(LoadData data, StatusImpl status);
 
     default List<Location> getValid(LoadData data){
 

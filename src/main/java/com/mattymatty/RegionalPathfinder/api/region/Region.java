@@ -46,15 +46,13 @@ public interface Region {
     boolean isValid();
 
     //a method to redo all the loading,evaluating and verifing
-    void load();
+    Status load();
 
-    void evaluate();
+    Status evaluate();
 
-    void validate();
+    Status validate();
 
-    List<Location> getPath(Location start, Location end);
-
-    Status getAsyncPath(Location start, Location end);
+    Status<List<Location>> getPath(Location start, Location end);
 
 
     static Region createRegion(String name, RegionType type){

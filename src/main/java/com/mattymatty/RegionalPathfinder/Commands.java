@@ -23,7 +23,7 @@ public class Commands implements CommandExecutor {
     private final RegionalPathfinder plugin;
     private List<Thread> particles = new LinkedList<>();
 
-    public Commands(RegionalPathfinder plugin) {
+    Commands(RegionalPathfinder plugin) {
         this.plugin = plugin;
     }
 
@@ -54,8 +54,18 @@ public class Commands implements CommandExecutor {
                                     switch (args[2].toLowerCase()) {
                                         case "corners":
                                             if (pos1 != null && pos2 != null) {
-                                                if (((BaseRegion) region).setCorners(pos1, pos2) != null) {
-                                                    sender.sendMessage("Successfully added corners and loaded region");
+                                                Status<Location[]> status = ((BaseRegion) region).setCorners(pos1, pos2);
+                                                if (status != null) {
+                                                    status.addListener((stat)->{
+                                                        if(stat.isDone())
+                                                            plugin.getServer().getScheduler().runTask(plugin,
+                                                                    ()->sender.sendMessage("Successfully added corners and loaded region"));
+                                                    }).addListener((stat)->{
+                                                        if(stat.hasException())
+                                                            plugin.getServer().getScheduler().runTask(plugin,
+                                                                    ()->sender.sendMessage("Exception loading corners"));
+                                                    });
+
                                                 } else {
                                                     sender.sendMessage("Error loading corners");
                                                 }
@@ -107,28 +117,21 @@ public class Commands implements CommandExecutor {
                                 }
                                 return true;
                             }
-                            case "path":{
-                                List<Location> path = region.getPath(pos1,pos2);
-                                if (path == null) {
-                                    sender.sendMessage("Error no path found");
-                                } else {
-                                    showParticles(path,true);
-                                    sender.sendMessage("Shown particles onto path, remove with /regionalpathfinder particle");
-                                }
-                                return true;
-                            }
-                            case "apath": {
-                                region.getAsyncPath(pos1,pos2).addObserver((o,i)->{
-                                    if(((Status) o).isDone()) {
-                                        if (((Status) o).getPath() == null) {
+                            case "path": {
+                                region.getPath(pos1,pos2).addListener((status)->{
+                                    if(status.isDone()) {
+                                        if (status.getProduct() == null) {
                                             plugin.getServer().getScheduler().runTask(plugin,()->sender.sendMessage("Error no path found"));
                                         } else {
                                             plugin.getServer().getScheduler().runTask(plugin,()->{
-                                                showParticles(((Status) o).getPath(), true);
+                                                showParticles(status.getProduct(), true);
                                                 sender.sendMessage("Shown particles onto path, remove with /regionalpathfinder particle");
                                             });
                                         }
                                     }
+                                }).addListener((status)->{
+                                    if(status.hasException())
+                                        plugin.getServer().getScheduler().runTask(plugin,()->sender.sendMessage("Exception while pathfinding"));
                                 });
                             }
                         }
@@ -174,10 +177,10 @@ public class Commands implements CommandExecutor {
                         if(!isPath)
                             plugin.getServer().getScheduler().runTask(plugin, () -> Objects.requireNonNull(act.getWorld()).spawnParticle(Particle.VILLAGER_HAPPY, act, 7));
                         else
-                            plugin.getServer().getScheduler().runTaskLater(plugin, () -> Objects.requireNonNull(act.getWorld()).spawnParticle(Particle.VILLAGER_HAPPY, act, 7),i*7);
+                            plugin.getServer().getScheduler().runTaskLater(plugin, () -> Objects.requireNonNull(act.getWorld()).spawnParticle(Particle.VILLAGER_HAPPY, act, 7),i*3);
                     }
                     long toc = System.currentTimeMillis();
-                    Thread.sleep(((isPath)?(3000):(500))-(toc-tic));
+                    Thread.sleep(((isPath)?(5000):(500))-(toc-tic));
                 }
             } catch (InterruptedException ignored) {
             }

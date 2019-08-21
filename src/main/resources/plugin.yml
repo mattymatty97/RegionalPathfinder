@@ -9,8 +9,15 @@ commands:
     description: default command for handling PathRegions
     usage: /regionalpathfinder
     aliases: [rpf,rph]
-
+    permission: rpf.test
+    permission-message: You don't have <permission>
 
 permissions:
-
-
+  rpf.test:
+    description: allows usage of test commands
+    default: false
+  rpf.*:
+    description: allows usage of test commands
+    default: false
+    children:
+      rpf.test: true

@@ -1,7 +1,7 @@
 package com.mattymatty.RegionalPathfinder.core.loader;
 
 import com.mattymatty.RegionalPathfinder.Logger;
-import com.mattymatty.RegionalPathfinder.api.Status;
+import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.core.StatusImpl;
 import com.mattymatty.RegionalPathfinder.core.graph.Edge;
 import com.mattymatty.RegionalPathfinder.core.graph.Node;
@@ -16,56 +16,83 @@ import org.jgrapht.alg.interfaces.StrongConnectivityAlgorithm;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.builder.GraphTypeBuilder;
 
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.Semaphore;
 
-public class SynchronousLoader implements Loader<Location> {
+public class AsynchronousLoader implements Loader<Location> {
 
     //getting the valid locations inside the region
     @Override
     public void load(LoadData data, StatusImpl<Location[]> status) {
+        new Thread(() -> {
+            long tic = System.currentTimeMillis();
+            try {
+                status.setStatus(1);
+                data.region.lock.lockInterruptibly();
+                status.setStatus(2);
+                data.status = LoadData.Status.LOADING;
+                Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> Logger.info("Started loading region: " + data.region.getName()));
+                preLoad(data);
+                Semaphore tmp = new Semaphore(0);
+                Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),()->_load(0,0,data,status,tmp));
+                tmp.acquire();
+                long toc = System.currentTimeMillis();
+                status.totTime=(toc-tic);
+                status.setStatus(3);
+            } catch (Exception ex) {
+                status.ex = ex;
+                status.setStatus(4);
+            }
+            data.region.lock.unlock();
+        }).start();
+    }
+
+    private void _load(int start_i, int count, LoadData data, StatusImpl<Location[]> status,Semaphore tmp) {
         long tic = System.currentTimeMillis();
-        try {
-            status.setStatus(2);
-            if (!data.region.lock.tryLock())
-                throw new AsyncExecption("Async operation still running on this region", data.region);
-            data.status = LoadData.Status.LOADING;
-            Logger.info("Started loading region: " + data.region.getName());
-            preLoad(data);
-            int count = 0;
-            //visit all the points inside the region
-            for (int i = 0; i < data.z_size * data.y_size * data.x_size; i++) {
-                int y = ((i / data.x_size) / data.z_size) % data.y_size;
-                int z = (i / data.x_size) % data.z_size;
-                int x = i % data.x_size;
-                Location actual = cloneLoc(data.lowerCorner).add(x, y, z);
-                //test if the point is a valid point
-                if (data.region.getEntity().isValidLocation(actual)) {
-                    count++;
-                    Node node = new Node(actual, i);
-                    data.graph.addVertex(node);
-                    data.nodesMap.put(i, node);
-                }
+        //visit all the points inside the region
+        int i = 0;
+        for (i = start_i;
+             (i < data.z_size * data.y_size * data.x_size)
+                     && (System.currentTimeMillis()<(tic+25))
+                ; i++) {
+            int y = ((i / data.x_size) / data.z_size) % data.y_size;
+            int z = (i / data.x_size) % data.z_size;
+            int x = i % data.x_size;
+            Location actual = cloneLoc(data.lowerCorner).add(x, y, z);
+            //test if the point is a valid point
+            if (data.region.getEntity().isValidLocation(actual)) {
+                count++;
+                Node node = new Node(actual, i);
+                data.graph.addVertex(node);
+                data.nodesMap.put(i, node);
             }
-            long toc = System.currentTimeMillis();
-            if (count != 0) {
-                data.status = LoadData.Status.LOADED;
-                status.syncTime = status.totTime = (toc-tic);
-                status.setProduct(new Location[]{data.lowerCorner, data.upperCorner});
-                status.setStatus(3);
-                Logger.info("Loaded region: " + data.region.getName());
-                Logger.info("elapsed: " + (toc - tic) + " ms");
-            } else {
-                data.status = null;
-                status.syncTime = status.totTime = (toc-tic);
-                status.setStatus(3);
-                Logger.info("Failed loading region: " + data.region.getName());
-                Logger.info("elapsed: " + (toc - tic) + " ms");
-            }
-        }catch (Exception ex){
-            status.ex = ex;
-            status.setStatus(4);
         }
-        data.region.lock.unlock();
+
+        if(i!=(data.z_size * data.y_size * data.x_size)) {
+            int finalI = i;
+            int finalCount = count;
+            Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> _load(finalI, finalCount, data, status,tmp));
+            return;
+        }
+
+        long toc = System.currentTimeMillis();
+        status.syncTime+=(toc-tic);
+        status.totTime+=(toc-tic);
+        if (count != 0) {
+            data.status = LoadData.Status.LOADED;
+            status.setProduct(new Location[]{data.lowerCorner, data.upperCorner});
+            Logger.info("Loaded region: " + data.region.getName());
+            Logger.info("server got halted for: "+status.syncTime +" ms");
+            Logger.info("total compute time: "+status.totTime +" ms");
+        } else {
+            data.status = null;
+            Logger.info("Failed loading region: " + data.region.getName());
+            Logger.info("server got halted for: "+status.syncTime +" ms");
+            Logger.info("total compute time: "+status.totTime +" ms");
+        }
+        tmp.release();
     }
 
     //extracting the reachable locations and adding them to the graph
@@ -134,7 +161,7 @@ public class SynchronousLoader implements Loader<Location> {
                 toc = System.currentTimeMillis();
                 if (scs == null) {
                     data.status = LoadData.Status.LOADED;
-                    status.syncTime = status.totTime = (toc-tic);
+                    status.syncTime = status.totTime = (toc - tic);
                     status.setStatus(3);
                     Logger.info("Failed evaluating region: " + data.region.getName());
                     Logger.info("elapsed: " + (toc - tic) + " ms");
@@ -146,18 +173,18 @@ public class SynchronousLoader implements Loader<Location> {
 
             } catch (Exception ex) {
                 toc = System.currentTimeMillis();
-                status.syncTime = status.totTime = (toc-tic);
+                status.syncTime = status.totTime = (toc - tic);
                 throw new LoaderException(ex, data.region);
             }
 
-            status.syncTime = status.totTime = (toc-tic);
+            status.syncTime = status.totTime = (toc - tic);
             status.setProduct(data.samplePoint);
             status.setStatus(3);
             Logger.info("Evalauted region: " + data.region.getName());
             Logger.info("elapsed: " + (toc - tic) + " ms");
 
             data.status = LoadData.Status.EVALUATED;
-        }catch (Exception ex){
+        } catch (Exception ex) {
             status.ex = ex;
             status.setStatus(4);
         }
@@ -187,12 +214,12 @@ public class SynchronousLoader implements Loader<Location> {
 
 
             long toc = System.currentTimeMillis();
-            status.syncTime = status.totTime = (toc-tic);
+            status.syncTime = status.totTime = (toc - tic);
             status.setStatus(3);
 
             Logger.info(((data.status == LoadData.Status.VALIDATED) ? "Validated" : "Failded validating") + " region: " + data.region.getName());
             Logger.info("elapsed: " + (toc - tic) + " ms");
-        }catch (Exception ex){
+        } catch (Exception ex) {
             status.ex = ex;
             status.setStatus(4);
         }
