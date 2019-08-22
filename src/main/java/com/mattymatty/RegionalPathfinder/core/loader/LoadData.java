@@ -2,31 +2,40 @@ package com.mattymatty.RegionalPathfinder.core.loader;
 
 import com.mattymatty.RegionalPathfinder.core.graph.Edge;
 import com.mattymatty.RegionalPathfinder.core.graph.Node;
-import org.jgrapht.*;
 import com.mattymatty.RegionalPathfinder.core.region.BaseRegionImpl;
 import org.bukkit.Location;
+import org.jgrapht.Graph;
 import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
-import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class LoadData {
+    public final BaseRegionImpl region;
     //data from Region
     public Location upperCorner;
     public Location lowerCorner;
     public Location samplePoint;
-    public final BaseRegionImpl region;
-
     //generated datas;
     Graph<Node, Edge> graph;
     Graph<Node, Edge> reachableGraph;
     ShortestPathAlgorithm<Node, Edge> shortestPath;
-    Map<Integer,Node> nodesMap;
+    Map<Integer, Node> nodesMap;
     Status status;
     int x_size;
     int y_size;
     int z_size;
+
+    public LoadData(BaseRegionImpl region, Location upperCorner, Location lowerCorner) {
+        this.region = region;
+        this.upperCorner = upperCorner;
+        this.lowerCorner = lowerCorner;
+        this.x_size = upperCorner.getBlockX() - lowerCorner.getBlockX();
+        this.y_size = upperCorner.getBlockY() - lowerCorner.getBlockY();
+        this.z_size = upperCorner.getBlockZ() - lowerCorner.getBlockZ();
+        this.status = null;
+        this.nodesMap = new HashMap<>();
+    }
 
     public Status getStatus() {
         return status;
@@ -44,7 +53,7 @@ public class LoadData {
         return z_size;
     }
 
-    public Node getNode(Location loc){
+    public Node getNode(Location loc) {
         int x = loc.getBlockX() - lowerCorner.getBlockX();
         int y = loc.getBlockY() - lowerCorner.getBlockY();
         int z = loc.getBlockZ() - lowerCorner.getBlockZ();
@@ -68,18 +77,7 @@ public class LoadData {
         return shortestPath;
     }
 
-    public LoadData(BaseRegionImpl region, Location upperCorner, Location lowerCorner) {
-        this.region = region;
-        this.upperCorner = upperCorner;
-        this.lowerCorner = lowerCorner;
-        this.x_size = upperCorner.getBlockX() - lowerCorner.getBlockX();
-        this.y_size = upperCorner.getBlockY() - lowerCorner.getBlockY();
-        this.z_size = upperCorner.getBlockZ() - lowerCorner.getBlockZ();
-        this.status = null;
-        this.nodesMap = new HashMap<>();
-    }
-
-    public enum Status implements Comparable<Status>{
+    public enum Status implements Comparable<Status> {
         LOADING(0),
         LOADED(1),
         EVALUATING(2),

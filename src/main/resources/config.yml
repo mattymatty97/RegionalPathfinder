@@ -1,9 +1,6 @@
 config-version: 1
 #---------------------
 
-#if the default loader is async or not
-async-default: false
-
 #the maximum sequential time an async operation should halt the server
 #in milliseconds
 async-max-halt-time: 25

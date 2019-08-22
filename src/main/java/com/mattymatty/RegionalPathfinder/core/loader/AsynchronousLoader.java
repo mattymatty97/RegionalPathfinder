@@ -2,12 +2,9 @@ package com.mattymatty.RegionalPathfinder.core.loader;
 
 import com.mattymatty.RegionalPathfinder.Logger;
 import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
-import com.mattymatty.RegionalPathfinder.api.Status;
-import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.core.StatusImpl;
 import com.mattymatty.RegionalPathfinder.core.graph.Edge;
 import com.mattymatty.RegionalPathfinder.core.graph.Node;
-import com.mattymatty.RegionalPathfinder.exeptions.AsyncExecption;
 import com.mattymatty.RegionalPathfinder.exeptions.LoaderException;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -15,8 +12,6 @@ import org.bukkit.util.Vector;
 import org.jgrapht.Graph;
 import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector;
 import org.jgrapht.alg.interfaces.StrongConnectivityAlgorithm;
-import org.jgrapht.alg.shortestpath.BellmanFordShortestPath;
-import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.alg.shortestpath.JohnsonShortestPaths;
 import org.jgrapht.graph.builder.GraphTypeBuilder;
 
@@ -36,23 +31,26 @@ public class AsynchronousLoader implements Loader<Location> {
             try {
                 status.setStatus(1);
                 data.region.lock.lockInterruptibly();
-                locked=true;
+                locked = true;
                 status.setStatus(2);
                 data.status = LoadData.Status.LOADING;
                 Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),
                         () -> Logger.info("Started loading region: " + data.region.getName()));
                 preLoad(data);
                 Semaphore tmp = new Semaphore(0);
+                status.percentage=0.01f;
+                status.setStatus(2);
                 Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),
                         () -> _load(0, 0, data, status, tmp));
                 tmp.acquire();
                 long toc = System.currentTimeMillis();
+                status.percentage=1f;
                 status.totTime = (toc - tic);
                 data.region.lock.unlock();
                 status.setStatus(3);
             } catch (Exception ex) {
                 status.ex = ex;
-                if(locked)
+                if (locked)
                     data.region.lock.unlock();
                 status.setStatus(4);
             }
@@ -85,6 +83,9 @@ public class AsynchronousLoader implements Loader<Location> {
         long toc = System.currentTimeMillis();
         status.syncTime += (toc - tic);
         status.totTime += (toc - tic);
+
+        status.percentage = ((float)i/(data.z_size * data.y_size * data.x_size));
+        status.setStatus(2);
 
         if (i != (data.z_size * data.y_size * data.x_size)) {
             int finalI = i;
@@ -121,7 +122,7 @@ public class AsynchronousLoader implements Loader<Location> {
                     throw new LoaderException("Region not loaded", data.region);
                 status.setStatus(1);
                 data.region.lock.lockInterruptibly();
-                locked=true;
+                locked = true;
                 status.setStatus(2);
                 data.status = LoadData.Status.EVALUATING;
                 Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),
@@ -133,6 +134,8 @@ public class AsynchronousLoader implements Loader<Location> {
 
                 Semaphore tmp = new Semaphore(0);
 
+                status.percentage=0.01f;
+                status.setStatus(2);
                 Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),
                         () -> _evaluate(data, queue, status, tmp));
 
@@ -143,12 +146,16 @@ public class AsynchronousLoader implements Loader<Location> {
                 List<Graph<Node, Edge>> stronglyConnectedSubgraphs =
                         scAlg.getStronglyConnectedComponents();
 
+                status.percentage=0.95f;
+                status.setStatus(2);
+
                 Node samplePoint = data.getNode(data.samplePoint);
 
                 Graph<Node, Edge> scs = stronglyConnectedSubgraphs.stream().filter(g -> g.containsVertex(samplePoint)).findFirst().orElse(null);
 
 
                 toc = System.currentTimeMillis();
+                status.percentage=1f;
                 if (scs == null) {
                     data.status = LoadData.Status.LOADED;
                     status.totTime = (toc - tic);
@@ -176,7 +183,7 @@ public class AsynchronousLoader implements Loader<Location> {
                 });
             } catch (Exception ex) {
                 status.ex = ex;
-                if(locked)
+                if (locked)
                     data.region.lock.unlock();
                 status.setStatus(4);
             }
@@ -189,7 +196,7 @@ public class AsynchronousLoader implements Loader<Location> {
         long tick_skip = RegionalPathfinder.getInstance().getConfig().getInt("async-tick-delay");
         while (!queue.isEmpty() && (System.currentTimeMillis() < (tic + (max_time * 0.80)))) {
             Node act = queue.poll();
-
+            assert act != null;
             int y = ((act.getI() / data.x_size) / data.z_size) % data.y_size;
             int z = (act.getI() / data.x_size) % data.z_size;
             int x = act.getI() % data.x_size;
@@ -214,8 +221,8 @@ public class AsynchronousLoader implements Loader<Location> {
                     //if dest is valid
                     if (dest != null &&
                             data.region.getEntity().extraMovementChecks(act.getLoc(), dest.getLoc())) {
-                            Edge edge = data.graph.addEdge(act, dest);
-                            data.graph.setEdgeWeight(edge,data.region.getEntity().movementCost(act.getLoc(), dest.getLoc()));
+                        Edge edge = data.graph.addEdge(act, dest);
+                        data.graph.setEdgeWeight(edge, data.region.getEntity().movementCost(act.getLoc(), dest.getLoc()));
                     }
                 }
 
@@ -225,6 +232,11 @@ public class AsynchronousLoader implements Loader<Location> {
         long toc = System.currentTimeMillis();
         status.syncTime += (toc - tic);
         status.totTime += (toc - tic);
+
+        int tot = data.graph.vertexSet().size();
+
+        status.percentage = ((tot-queue.size())/(float)tot)*(0.90f);
+        status.setStatus(2);
 
         if (!queue.isEmpty()) {
             Bukkit.getScheduler().runTaskLater(RegionalPathfinder.getInstance(),
@@ -238,7 +250,7 @@ public class AsynchronousLoader implements Loader<Location> {
 
     @Override
     public void validate(LoadData data, StatusImpl status) {
-        new Thread(()-> {
+        new Thread(() -> {
             boolean locked = false;
             long tic = System.currentTimeMillis();
             long toc;
@@ -248,7 +260,7 @@ public class AsynchronousLoader implements Loader<Location> {
 
                 status.setStatus(1);
                 data.region.lock.lockInterruptibly();
-                locked=true;
+                locked = true;
                 status.setStatus(2);
 
                 data.status = LoadData.Status.VALIDATING;
@@ -258,40 +270,43 @@ public class AsynchronousLoader implements Loader<Location> {
 
                 Queue<Node> nodeQueue = new LinkedList<>(data.getReachableGraph().vertexSet());
 
+                status.percentage=0.01f;
+                status.setStatus(2);
                 Semaphore tmp = new Semaphore(0);
                 Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),
-                        ()->_validate(nodeQueue,data,status,tmp));
+                        () -> _validate(nodeQueue, data, status, tmp));
 
                 tmp.acquire();
                 toc = System.currentTimeMillis();
                 status.totTime = (toc - tic);
+                status.percentage=1f;
                 data.region.lock.unlock();
                 status.setStatus(3);
 
-                Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),()-> {
+                Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> {
                     Logger.info(((data.status == LoadData.Status.VALIDATED) ? "Validated" : "Failded validating") + " region: " + data.region.getName());
                     Logger.fine("server got halted for: " + status.syncTime + " ms");
                     Logger.fine("total compute time: " + status.totTime + " ms");
                 });
             } catch (Exception ex) {
                 status.ex = ex;
-                if(locked)
+                if (locked)
                     data.region.lock.unlock();
                 status.setStatus(4);
             }
         }).start();
     }
 
-    private void _validate(Queue<Node> queue,LoadData data,StatusImpl status,Semaphore sem) {
+    private void _validate(Queue<Node> queue, LoadData data, StatusImpl status, Semaphore sem) {
         int i;
         long tic = System.currentTimeMillis();
         long max_time = RegionalPathfinder.getInstance().getConfig().getInt("async-max-halt-time");
         long tick_skip = RegionalPathfinder.getInstance().getConfig().getInt("async-tick-delay");
 
-        while (!queue.isEmpty() && System.currentTimeMillis()<(tic+(max_time*0.9))){
+        while (!queue.isEmpty() && System.currentTimeMillis() < (tic + (max_time * 0.9))) {
             Node curr = queue.poll();
             assert curr != null;
-            if(!data.region.getEntity().isValidLocation(curr.getLoc())){
+            if (!data.region.getEntity().isValidLocation(curr.getLoc())) {
                 data.status = LoadData.Status.EVALUATED;
                 sem.release();
                 return;
@@ -300,15 +315,20 @@ public class AsynchronousLoader implements Loader<Location> {
 
         long toc = System.currentTimeMillis();
 
-        status.totTime+=(toc-tic);
-        status.syncTime+=(toc-tic);
+        status.totTime += (toc - tic);
+        status.syncTime += (toc - tic);
 
-        if(queue.isEmpty()) {
+        int tot = data.reachableGraph.vertexSet().size();
+
+        status.percentage = ((tot-queue.size())/(float)tot);
+        status.setStatus(2);
+
+        if (queue.isEmpty()) {
             data.status = LoadData.Status.VALIDATED;
             sem.release();
-        }else{
+        } else {
             Bukkit.getScheduler().runTaskLater(RegionalPathfinder.getInstance(),
-                    ()->_validate(queue, data, status, sem),tick_skip);
+                    () -> _validate(queue, data, status, sem), tick_skip);
         }
     }
 
@@ -324,7 +344,7 @@ public class AsynchronousLoader implements Loader<Location> {
     }
 
     private void preEvaluate(LoadData data) {
-        Graph<Node,Edge> newGraph = GraphTypeBuilder.<Node, Edge>directed().edgeClass(Edge.class).weighted(true).buildGraph();
+        Graph<Node, Edge> newGraph = GraphTypeBuilder.<Node, Edge>directed().edgeClass(Edge.class).weighted(true).buildGraph();
         data.graph.vertexSet().forEach(newGraph::addVertex);
         data.graph = newGraph;
         data.reachableGraph = null;

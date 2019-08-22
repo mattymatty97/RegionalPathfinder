@@ -14,9 +14,8 @@ public interface BaseRegion extends Region {
     Location getSamplePoint();
 
     Entity setEntity(Entity entity);
+
     Entity getEntity();
-
-
 
 
 }

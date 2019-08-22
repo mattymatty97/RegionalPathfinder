@@ -3,13 +3,15 @@ package com.mattymatty.RegionalPathfinder.exeptions;
 public class NodeExeption extends GraphExeption {
     Long nodeId;
     String nodeName;
-    public NodeExeption(long id,String message){
+
+    public NodeExeption(long id, String message) {
         super(message);
-        nodeId=id;
+        nodeId = id;
     }
-    public NodeExeption(String name,String message){
+
+    public NodeExeption(String name, String message) {
         super(message);
-        nodeName=name;
+        nodeName = name;
     }
 
     public long getNodeId() {
@@ -20,12 +22,12 @@ public class NodeExeption extends GraphExeption {
         return nodeName;
     }
 
-    public String getCompleteMessage(){
+    public String getCompleteMessage() {
         StringBuilder sb = new StringBuilder(getMessage());
         sb.append(" : ");
-        if(nodeId!=null)
+        if (nodeId != null)
             sb.append(nodeId);
-        if(nodeName!=null)
+        if (nodeName != null)
             sb.append(nodeName);
         return sb.toString();
     }

@@ -16,6 +16,13 @@ public interface RegionImpl extends Region {
 
     AtomicInteger nextID = new AtomicInteger(1);
 
+    //static creator
+    static Region createRegion(String name, RegionType type) {
+        if (type == RegionType.BASE)
+            return new BaseRegionImpl(name);
+        return null;
+    }
+
     //a check for intersection locations
     default Iterable<Location> getIntersection(RegionImpl region) {
         List<Location> common = new LinkedList<Location>(region.getReachableLocations());
@@ -27,15 +34,6 @@ public interface RegionImpl extends Region {
 
     Loader getLoader();
 
-
     //a cancellation method
     void delete();
-
-
-    //static creator
-    static Region createRegion(String name, RegionType type){
-        if(type==RegionType.BASE)
-            return new BaseRegionImpl(name);
-        return null;
-    }
 }

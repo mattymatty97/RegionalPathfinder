@@ -5,11 +5,11 @@ import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.api.Status;
 import com.mattymatty.RegionalPathfinder.api.entity.Entity;
 import com.mattymatty.RegionalPathfinder.api.region.BaseRegion;
-import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.core.StatusImpl;
 import com.mattymatty.RegionalPathfinder.core.entity.PlayerEntity;
 import com.mattymatty.RegionalPathfinder.core.graph.Edge;
 import com.mattymatty.RegionalPathfinder.core.graph.Node;
+import com.mattymatty.RegionalPathfinder.core.loader.AsynchronousLoader;
 import com.mattymatty.RegionalPathfinder.core.loader.LoadData;
 import com.mattymatty.RegionalPathfinder.core.loader.Loader;
 import com.mattymatty.RegionalPathfinder.exeptions.AsyncExecption;
@@ -28,17 +28,12 @@ import java.util.stream.Collectors;
 
 public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
-    private final int ID;
-
-    private String Name;
-
-    private Entity entity = new PlayerEntity();
-
-    private LoadData loadData;
-
-    private Loader<Location> loader;
-
     public final Lock lock = new ReentrantLock();
+    private final int ID;
+    private String Name;
+    private Entity entity = new PlayerEntity();
+    private LoadData loadData;
+    private Loader<Location> loader = new AsynchronousLoader();
 
     //METHODS FROM Region
 
@@ -148,7 +143,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
             try {
                 status.setStatus(1);
                 lock.lockInterruptibly();
-                locked=true;
+                locked = true;
                 if (loadData.getStatus() == LoadData.Status.VALIDATED) {
 
                     Semaphore tmp = new Semaphore(0);
@@ -157,10 +152,10 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
                     Location actual_s = new Location(start.getWorld(), start.getBlockX(), start.getBlockY(), start.getBlockZ()).add(0.5, 0.5, 0.5);
                     Location actual_e = new Location(end.getWorld(), end.getBlockX(), end.getBlockY(), end.getBlockZ()).add(0.5, 0.5, 0.5);
 
-                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),()->{
-                        Logger.info("Pathfinding in region: "+ getName());
-                        Logger.fine("from: X="+actual_s.getBlockX() + " Y="+actual_s.getBlockY() +" Z="+actual_s.getBlockZ());
-                        Logger.fine("to: X="+actual_e.getBlockX() + " Y="+actual_e.getBlockY() +" Z="+actual_e.getBlockZ());
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> {
+                        Logger.info("Pathfinding in region: " + getName());
+                        Logger.fine("from: X=" + actual_s.getBlockX() + " Y=" + actual_s.getBlockY() + " Z=" + actual_s.getBlockZ());
+                        Logger.fine("to: X=" + actual_e.getBlockX() + " Y=" + actual_e.getBlockY() + " Z=" + actual_e.getBlockZ());
                     });
 
                     RegionalPathfinder.getInstance().getServer().getScheduler()
@@ -172,14 +167,14 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
                                 } else {
                                     allowed.set(true);
                                 }
-                                status.syncTime+=(System.currentTimeMillis()-tic2);
+                                status.syncTime += (System.currentTimeMillis() - tic2);
                                 tmp.release();
                             });
 
                     tmp.acquire();
 
                     if (!allowed.get()) {
-                        status.totTime=(System.currentTimeMillis()-tic);
+                        status.totTime = (System.currentTimeMillis() - tic);
                         status.setStatus(3);
                         lock.unlock();
                         return;
@@ -195,13 +190,13 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
                     path = iPaths.getPath(eNode).getVertexList();
 
-                    status.totTime=(System.currentTimeMillis()-tic);
+                    status.totTime = (System.currentTimeMillis() - tic);
                     status.setProduct(path.stream().map(Node::getLoc).collect(Collectors.toList()));
 
                     long toc = System.currentTimeMillis();
-                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),()->{
-                        Logger.info(((!path.isEmpty())?"Found path":"Failed pathfinding") + " in region: "+ getName());
-                        Logger.fine("Took: "+(toc-tic) +" ms");
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> {
+                        Logger.info(((!path.isEmpty()) ? "Found path" : "Failed pathfinding") + " in region: " + getName());
+                        Logger.fine("Took: " + (toc - tic) + " ms");
                     });
                 } else {
                     throw new RegionException("Region is not valid", this);
@@ -210,8 +205,8 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
                 lock.unlock();
             } catch (Exception ex) {
                 status.ex = ex;
-                status.totTime=(System.currentTimeMillis()-tic);
-                if(locked)
+                status.totTime = (System.currentTimeMillis() - tic);
+                if (locked)
                     lock.unlock();
                 status.setStatus(4);
             }
@@ -221,7 +216,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     @Override
     public Loader setLoader(Loader loader) {
-        return this.loader=loader;
+        return this.loader = loader;
     }
 
     @Override
@@ -254,7 +249,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     public Status<Location[]> load() {
         StatusImpl<Location[]> ret = new StatusImpl<>();
         if (loadData != null)
-            loader.load(loadData,ret);
+            loader.load(loadData, ret);
         return ret;
     }
 
@@ -262,7 +257,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     public Status<Location> evaluate() {
         StatusImpl<Location> ret = new StatusImpl<>();
         if (loadData != null)
-            loader.evaluate(loadData,ret);
+            loader.evaluate(loadData, ret);
         return ret;
     }
 
@@ -270,7 +265,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     public Status<Object> validate() {
         StatusImpl<Object> ret = new StatusImpl<Object>();
         if (loadData != null)
-            loader.validate(loadData,ret);
+            loader.validate(loadData, ret);
         return ret;
     }
 

@@ -17,6 +17,8 @@ public interface Status<T> {
 
     long getTimeTotal();
 
+    float getPercentage();
+
     T getProduct();
 
     Status<T> addListener(Consumer<Status<T>> callback);
