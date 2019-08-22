@@ -13,7 +13,9 @@ import org.bukkit.util.Vector;
 import org.jgrapht.Graph;
 import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector;
 import org.jgrapht.alg.interfaces.StrongConnectivityAlgorithm;
+import org.jgrapht.alg.shortestpath.BellmanFordShortestPath;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
+import org.jgrapht.alg.shortestpath.JohnsonShortestPaths;
 import org.jgrapht.graph.builder.GraphTypeBuilder;
 
 import java.util.*;
@@ -53,13 +55,13 @@ public class SynchronousLoader implements Loader<Location> {
                 status.setProduct(new Location[]{data.lowerCorner, data.upperCorner});
                 status.setStatus(3);
                 Logger.info("Loaded region: " + data.region.getName());
-                Logger.info("elapsed: " + (toc - tic) + " ms");
+                Logger.fine("elapsed: " + (toc - tic) + " ms");
             } else {
                 data.status = null;
                 status.syncTime = status.totTime = (toc-tic);
                 status.setStatus(3);
                 Logger.info("Failed loading region: " + data.region.getName());
-                Logger.info("elapsed: " + (toc - tic) + " ms");
+                Logger.fine("elapsed: " + (toc - tic) + " ms");
             }
         }catch (Exception ex){
             status.ex = ex;
@@ -114,7 +116,8 @@ public class SynchronousLoader implements Loader<Location> {
                             //if dest is valid
                             if (dest != null &&
                                     data.region.getEntity().extraMovementChecks(act.getLoc(), dest.getLoc())) {
-                                data.graph.addEdge(act, dest).setWeight(data.region.getEntity().movementCost(act.getLoc(), dest.getLoc()));
+                                    Edge edge = data.graph.addEdge(act, dest);
+                                    data.graph.setEdgeWeight(edge,data.region.getEntity().movementCost(act.getLoc(), dest.getLoc()));
                             }
                         }
 
@@ -137,12 +140,12 @@ public class SynchronousLoader implements Loader<Location> {
                     status.syncTime = status.totTime = (toc-tic);
                     status.setStatus(3);
                     Logger.info("Failed evaluating region: " + data.region.getName());
-                    Logger.info("elapsed: " + (toc - tic) + " ms");
+                    Logger.fine("elapsed: " + (toc - tic) + " ms");
                     return;
                 }
 
                 data.reachableGraph = scs;
-                data.shortestPath = new DijkstraShortestPath<>(data.getReachableGraph());
+                data.shortestPath = new JohnsonShortestPaths<>(data.getReachableGraph());
 
             } catch (Exception ex) {
                 toc = System.currentTimeMillis();
@@ -154,15 +157,15 @@ public class SynchronousLoader implements Loader<Location> {
             status.setProduct(data.samplePoint);
             status.setStatus(3);
             Logger.info("Evalauted region: " + data.region.getName());
-            Logger.info("elapsed: " + (toc - tic) + " ms");
+            Logger.fine("elapsed: " + (toc - tic) + " ms");
 
             data.status = LoadData.Status.EVALUATED;
+
+            data.region.lock.unlock();
         }catch (Exception ex){
             status.ex = ex;
             status.setStatus(4);
         }
-
-        data.region.lock.unlock();
     }
 
     @Override

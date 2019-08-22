@@ -1,13 +1,12 @@
 package com.mattymatty.RegionalPathfinder.core.loader;
 
-import com.google.common.graph.GraphBuilder;
 import com.mattymatty.RegionalPathfinder.core.graph.Edge;
 import com.mattymatty.RegionalPathfinder.core.graph.Node;
 import org.jgrapht.*;
 import com.mattymatty.RegionalPathfinder.core.region.BaseRegionImpl;
 import org.bukkit.Location;
+import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
-import org.jgrapht.graph.DefaultWeightedEdge;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,7 +21,7 @@ public class LoadData {
     //generated datas;
     Graph<Node, Edge> graph;
     Graph<Node, Edge> reachableGraph;
-    DijkstraShortestPath<Node, Edge> shortestPath;
+    ShortestPathAlgorithm<Node, Edge> shortestPath;
     Map<Integer,Node> nodesMap;
     Status status;
     int x_size;
@@ -65,7 +64,7 @@ public class LoadData {
         return reachableGraph;
     }
 
-    public DijkstraShortestPath<Node, Edge> getShortestPath() {
+    public ShortestPathAlgorithm<Node, Edge> getShortestPath() {
         return shortestPath;
     }
 

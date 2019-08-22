@@ -1,6 +1,10 @@
 package com.mattymatty.RegionalPathfinder;
 
+import com.mattymatty.RegionalPathfinder.api.region.BaseRegion;
+import com.mattymatty.RegionalPathfinder.core.loader.AsynchronousLoader;
+import com.mattymatty.RegionalPathfinder.core.loader.Loader;
 import com.mattymatty.RegionalPathfinder.core.loader.SynchronousLoader;
+import com.mattymatty.RegionalPathfinder.core.region.BaseRegionImpl;
 import com.mattymatty.RegionalPathfinder.core.region.RegionImpl;
 import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.api.region.RegionType;
@@ -22,7 +26,7 @@ public class RegionalPathfinder extends JavaPlugin {
 
     private static RegionalPathfinder instance;
 
-    private Class actLoader = SynchronousLoader.class;
+    private Loader actLoader = new SynchronousLoader();
 
     private Map<String, Region> regionMap = new HashMap<>();
 
@@ -30,6 +34,9 @@ public class RegionalPathfinder extends JavaPlugin {
     public void onLoad() {
         super.onLoad();
         instance = this;
+        saveDefaultConfig();
+        if(getConfig().getBoolean("async-default"))
+            actLoader=new AsynchronousLoader();
     }
 
     @Override
@@ -47,7 +54,10 @@ public class RegionalPathfinder extends JavaPlugin {
 
     public Region createRegion(String name, RegionType type){
         Region region = Region.createRegion(name,type);
+        if(region instanceof BaseRegionImpl)
+            ((BaseRegionImpl)region).setLoader(actLoader);
         regionMap.put(name,region);
+        Logger.fine("Created "+((type==RegionType.BASE)?"base":"extended")+" region: "+name);
         return region;
     }
 
@@ -63,6 +73,26 @@ public class RegionalPathfinder extends JavaPlugin {
     public void removeRegion(Region region){
         regionMap.remove(region.getName());
         ((RegionImpl)region).delete();
+    }
+
+    public boolean isAsync(){
+        return actLoader instanceof AsynchronousLoader;
+    }
+
+    public void setAsyncLoading(){
+        if(!isAsync()) {
+            actLoader = new AsynchronousLoader();
+            regionMap.values().stream().filter(r->r.getLevel()==1).forEach((r)->((BaseRegionImpl)r).setLoader(actLoader));
+            Logger.info("Changed loader to Async");
+        }
+    }
+
+    public void setSyncLoading(){
+        if(isAsync()) {
+            actLoader = new SynchronousLoader();
+            regionMap.values().stream().filter(r->r.getLevel()==1).forEach((r)->((BaseRegionImpl)r).setLoader(actLoader));
+            Logger.info("Changed loader to Sync");
+        }
     }
 
     public static RegionalPathfinder getInstance(){

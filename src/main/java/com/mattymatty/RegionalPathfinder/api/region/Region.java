@@ -1,5 +1,6 @@
 package com.mattymatty.RegionalPathfinder.api.region;
 
+import com.mattymatty.RegionalPathfinder.core.loader.Loader;
 import com.mattymatty.RegionalPathfinder.core.region.RegionImpl;
 import com.mattymatty.RegionalPathfinder.api.Status;
 import org.bukkit.Location;

@@ -5,8 +5,8 @@ config-version: 1
 async-default: false
 
 #the maximum sequential time an async operation should halt the server
-#in microseconds
-async-max-halt-time: 2500
+#in milliseconds
+async-max-halt-time: 25
 
 #how many ticks to wait till next sync operation
 async-tick-delay: 3

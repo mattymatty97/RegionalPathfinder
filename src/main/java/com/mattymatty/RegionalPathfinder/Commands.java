@@ -4,6 +4,7 @@ import com.mattymatty.RegionalPathfinder.api.Status;
 import com.mattymatty.RegionalPathfinder.api.region.BaseRegion;
 import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.api.region.RegionType;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.command.Command;
@@ -59,11 +60,15 @@ public class Commands implements CommandExecutor {
                                                     status.addListener((stat)->{
                                                         if(stat.isDone())
                                                             plugin.getServer().getScheduler().runTask(plugin,
-                                                                    ()->sender.sendMessage("Successfully added corners and loaded region"));
+                                                                    ()->sender.sendMessage("Successfully added corners and loaded region" +
+                                                                            "\ntook: "+stat.getTimeTotal() +" ms" +
+                                                                            "\nand halted server for: " +stat.getTimeSync()+" ms"));
                                                     }).addListener((stat)->{
                                                         if(stat.hasException())
                                                             plugin.getServer().getScheduler().runTask(plugin,
-                                                                    ()->sender.sendMessage("Exception loading corners"));
+                                                                    ()->sender.sendMessage("Exception loading corners" +
+                                                                            "\ntook: "+stat.getTimeTotal() +" ms" +
+                                                                            "\nand halted server for: " +stat.getTimeSync()+" ms"));
                                                     });
 
                                                 } else {
@@ -74,10 +79,23 @@ public class Commands implements CommandExecutor {
                                             }
                                             return true;
                                         case "samplepoint":
-                                            if (((BaseRegion) region).setSamplePoint(player.getLocation()) != null) {
-                                                sender.sendMessage("Successfully set SamplePoint and evaluated region");
-                                            } else {
-                                                sender.sendMessage("Error adding SamplePoint");
+                                            Status<Location> status = ((BaseRegion) region).setSamplePoint(((Player) sender).getLocation());
+                                            if (status != null) {
+                                                status.addListener((stat)->{
+                                                    if(stat.isDone())
+                                                        plugin.getServer().getScheduler().runTask(plugin,
+                                                                ()->sender.sendMessage("Successfully set sample point and evaluated region" +
+                                                                        "\ntook: "+stat.getTimeTotal() +" ms" +
+                                                                        "\nand halted server for: " +stat.getTimeSync()+" ms"));
+                                                }).addListener((stat)->{
+                                                    if(stat.hasException())
+                                                        plugin.getServer().getScheduler().runTask(plugin,
+                                                                ()->sender.sendMessage("Exception setting sample point" +
+                                                                        "\ntook: "+stat.getTimeTotal() +" ms" +
+                                                                        "\nand halted server for: " +stat.getTimeSync()+" ms"));
+                                                });
+                                            }else {
+                                                sender.sendMessage("Error setting sample point");
                                             }
                                             return true;
                                         default:
@@ -87,12 +105,28 @@ public class Commands implements CommandExecutor {
                                 return false;
                             }
                             case "validate": {
-                                region.validate();
-                                if (region.isValid()) {
-                                    sender.sendMessage("Successfully validated the region");
-                                } else {
-                                    sender.sendMessage("Error Validating Region");
-                                }
+                                Status stat = region.validate();
+                                stat.addListener((s)->{
+                                    if(stat.isDone())
+                                        Bukkit.getScheduler().runTask(plugin,()-> {
+                                            if (region.isValid()) {
+                                                sender.sendMessage("Successfully validated the region" +
+                                                        "\ntook: " + stat.getTimeTotal() + " ms" +
+                                                        "\nand halted server for: " + stat.getTimeSync() + " ms");
+                                            } else {
+                                                sender.sendMessage("Error Validating Region"+
+                                                        "\ntook: "+stat.getTimeTotal() +" ms" +
+                                                        "\nand halted server for: " +stat.getTimeSync()+" ms");
+                                            }
+                                        });
+                                });
+                                stat.addListener((s)->{
+                                    if(stat.hasException())
+                                        Bukkit.getScheduler().runTask(plugin,()->
+                                                sender.sendMessage("Exception setting sample point" +
+                                                        "\ntook: "+stat.getTimeTotal() +" ms" +
+                                                        "\nand halted server for: " +stat.getTimeSync()+" ms"));
+                                });
                                 break;
                             }
                             case "validloc":
@@ -121,42 +155,61 @@ public class Commands implements CommandExecutor {
                                 region.getPath(pos1,pos2).addListener((status)->{
                                     if(status.isDone()) {
                                         if (status.getProduct() == null) {
-                                            plugin.getServer().getScheduler().runTask(plugin,()->sender.sendMessage("Error no path found"));
+                                            plugin.getServer().getScheduler().runTask(plugin,()->sender.sendMessage("Error no path found"+
+                                                    "\ntook: "+status.getTimeTotal() +" ms" +
+                                                    "\nand halted server for: " +status.getTimeSync()+" ms"));
                                         } else {
                                             plugin.getServer().getScheduler().runTask(plugin,()->{
                                                 showParticles(status.getProduct(), true);
-                                                sender.sendMessage("Shown particles onto path, remove with /regionalpathfinder particle");
+                                                sender.sendMessage("Shown particles onto path, remove with /regionalpathfinder particle"+
+                                                        "\ntook: "+status.getTimeTotal() +" ms" +
+                                                        "\nand halted server for: " +status.getTimeSync()+" ms");
                                             });
                                         }
                                     }
                                 }).addListener((status)->{
                                     if(status.hasException())
-                                        plugin.getServer().getScheduler().runTask(plugin,()->sender.sendMessage("Exception while pathfinding"));
+                                        plugin.getServer().getScheduler().runTask(plugin,()->sender.sendMessage("Exception while pathfinding"+
+                                                "\ntook: "+status.getTimeTotal() +" ms" +
+                                                "\nand halted server for: " +status.getTimeSync()+" ms"));
                                 });
                             }
                         }
-                        return true;
-
-
+                        return false;
                     }else return false;
                 }
                 return true;
             }else if(args.length == 1) {
-                if (args[0].equalsIgnoreCase("pos1")) {
-                    pos1 = player.getLocation();
-                    sender.sendMessage("Pos1 set");
-                    return true;
-                } else if (args[0].equalsIgnoreCase("pos2")) {
-                    pos2 = player.getLocation();
-                    sender.sendMessage("Pos2 set");
-                    return true;
-                } else if(args[0].equalsIgnoreCase("particle")){
-                    particles.forEach(Thread::interrupt);
-                    sender.sendMessage("Particles cleared");
-                    return true;
-                } else if(args[0].equalsIgnoreCase("list")){
-                    sender.sendMessage("Existing regions:\n" + Arrays.stream(plugin.getRegions()).map(Region::getName).reduce("",(s1,s2)->s1 + "\n" + s2));
-                    return true;
+                switch (args[0].toLowerCase()) {
+                    case "pos1": {
+                        pos1 = player.getLocation();
+                        sender.sendMessage("Pos1 set");
+                        return true;
+                    }
+                    case "pos2" : {
+                        pos2 = player.getLocation();
+                        sender.sendMessage("Pos2 set");
+                        return true;
+                    }
+                    case "particle": {
+                        particles.forEach(Thread::interrupt);
+                        sender.sendMessage("Particles cleared");
+                        return true;
+                    }
+                    case "list": {
+                        sender.sendMessage("Existing regions:\n" + Arrays.stream(plugin.getRegions()).map(Region::getName).reduce("", (s1, s2) -> s1 + "\n" + s2));
+                        return true;
+                    }
+                    case "async": {
+                        plugin.setAsyncLoading();
+                        sender.sendMessage("Successfully set asynchronous loading");
+                        return true;
+                    }
+                    case "sync": {
+                        plugin.setSyncLoading();
+                        sender.sendMessage("Successfully set synchronous loading");
+                        return true;
+                    }
                 }
             }
         }

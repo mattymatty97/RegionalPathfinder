@@ -132,7 +132,7 @@ public class PlayerEntity implements Entity {
             }
         }
 
-        if(Math.abs(dx)>0 && Math.abs(dz)>0)
+        if(dx!=0 && dz!=0)
             result+= cost.getDiagonalAddition();
 
         result+= cost.getBlockCost(dest.getBlock().getType());
@@ -203,7 +203,7 @@ public class PlayerEntity implements Entity {
         private final double diagonalAddition ;
         private final double jump;
         private final double stair_slab ;
-        private final Map<Material,Double> blockCosts;
+        private final Map<String,Double> blockCosts;
 
         public double getDefaultMovement() {
             return defaultMovement;
@@ -222,7 +222,7 @@ public class PlayerEntity implements Entity {
         }
 
         public double getBlockCost(Material material){
-            return blockCosts.getOrDefault(material,0.0);
+            return blockCosts.getOrDefault(material.getKey().toString(),0.0);
         }
 
         public MovementCost() {
@@ -231,8 +231,9 @@ public class PlayerEntity implements Entity {
             this.jump = 3;
             this.stair_slab = 2;
             this.blockCosts = new HashMap<>();
-            blockCosts.put(Material.GRASS_BLOCK,5.0);
-            blockCosts.put(Material.SOUL_SAND,7.0);
+            blockCosts.put("minecraft:soul_sand",7.0);
+            blockCosts.put("minecraft:grass_block",5.0);
+            blockCosts.put("minecraft:dirt",5.0);
         }
 
     }

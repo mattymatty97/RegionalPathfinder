@@ -1,16 +1,17 @@
 package com.mattymatty.RegionalPathfinder.core.region;
 
+import com.mattymatty.RegionalPathfinder.Logger;
 import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.api.Status;
 import com.mattymatty.RegionalPathfinder.api.entity.Entity;
 import com.mattymatty.RegionalPathfinder.api.region.BaseRegion;
+import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.core.StatusImpl;
 import com.mattymatty.RegionalPathfinder.core.entity.PlayerEntity;
 import com.mattymatty.RegionalPathfinder.core.graph.Edge;
 import com.mattymatty.RegionalPathfinder.core.graph.Node;
 import com.mattymatty.RegionalPathfinder.core.loader.LoadData;
 import com.mattymatty.RegionalPathfinder.core.loader.Loader;
-import com.mattymatty.RegionalPathfinder.core.loader.SynchronousLoader;
 import com.mattymatty.RegionalPathfinder.exeptions.AsyncExecption;
 import com.mattymatty.RegionalPathfinder.exeptions.RegionException;
 import org.bukkit.Bukkit;
@@ -35,7 +36,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     private LoadData loadData;
 
-    private Loader<Location> loader = new SynchronousLoader();
+    private Loader<Location> loader;
 
     public final Lock lock = new ReentrantLock();
 
@@ -142,10 +143,12 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     public Status<List<Location>> getPath(Location start, Location end) {
         StatusImpl<List<Location>> status = new StatusImpl<>();
         new Thread(() -> {
+            boolean locked = false;
             long tic = System.currentTimeMillis();
             try {
                 status.setStatus(1);
                 lock.lockInterruptibly();
+                locked=true;
                 if (loadData.getStatus() == LoadData.Status.VALIDATED) {
 
                     Semaphore tmp = new Semaphore(0);
@@ -154,24 +157,29 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
                     Location actual_s = new Location(start.getWorld(), start.getBlockX(), start.getBlockY(), start.getBlockZ()).add(0.5, 0.5, 0.5);
                     Location actual_e = new Location(end.getWorld(), end.getBlockX(), end.getBlockY(), end.getBlockZ()).add(0.5, 0.5, 0.5);
 
-                    Bukkit.getLogger().info("Pathfinding in region: "+ getName() +
-                            "\nfrom: X="+actual_s.getBlockX() + " Y="+actual_s.getBlockY() +" Z="+actual_s.getBlockZ()+
-                            "\nto: X="+actual_e.getBlockX() + " Y="+actual_e.getBlockY() +" Z="+actual_e.getBlockZ());
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),()->{
+                        Logger.info("Pathfinding in region: "+ getName());
+                        Logger.fine("from: X="+actual_s.getBlockX() + " Y="+actual_s.getBlockY() +" Z="+actual_s.getBlockZ());
+                        Logger.fine("to: X="+actual_e.getBlockX() + " Y="+actual_e.getBlockY() +" Z="+actual_e.getBlockZ());
+                    });
 
                     RegionalPathfinder.getInstance().getServer().getScheduler()
                             .runTask(RegionalPathfinder.getInstance(), () -> {
+                                long tic2 = System.currentTimeMillis();
                                 List<Location> reachable = loader.getReachable(loadData);
                                 if (reachable == null || start.getWorld() != end.getWorld() || !reachable.contains(actual_s) || !reachable.contains(actual_e)) {
                                     allowed.set(false);
                                 } else {
                                     allowed.set(true);
                                 }
+                                status.syncTime+=(System.currentTimeMillis()-tic2);
                                 tmp.release();
                             });
 
                     tmp.acquire();
 
                     if (!allowed.get()) {
+                        status.totTime=(System.currentTimeMillis()-tic);
                         status.setStatus(3);
                         lock.unlock();
                         return;
@@ -187,25 +195,39 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
                     path = iPaths.getPath(eNode).getVertexList();
 
+                    status.totTime=(System.currentTimeMillis()-tic);
                     status.setProduct(path.stream().map(Node::getLoc).collect(Collectors.toList()));
 
                     long toc = System.currentTimeMillis();
-                    Bukkit.getLogger().info(((!path.isEmpty())?"Found path":"Failed pathfinding") + " in region: "+ getName() +
-                            "\nTook: "+(toc-tic) +" ms");
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),()->{
+                        Logger.info(((!path.isEmpty())?"Found path":"Failed pathfinding") + " in region: "+ getName());
+                        Logger.fine("Took: "+(toc-tic) +" ms");
+                    });
                 } else {
-                    status.setStatus(3);
-                    lock.unlock();
                     throw new RegionException("Region is not valid", this);
                 }
                 status.setStatus(3);
                 lock.unlock();
-            } catch (InterruptedException ignored) {
+            } catch (Exception ex) {
+                status.ex = ex;
+                status.totTime=(System.currentTimeMillis()-tic);
+                if(locked)
+                    lock.unlock();
+                status.setStatus(4);
             }
         }).start();
         return status;
     }
 
-    //METHODS FROM BaseRegion
+    @Override
+    public Loader setLoader(Loader loader) {
+        return this.loader=loader;
+    }
+
+    @Override
+    public Loader getLoader() {
+        return loader;
+    }
 
     @Override
     public void delete() {
@@ -214,16 +236,6 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     @Override
     public Location getSamplePoint() {
         return (loadData == null) ? null : this.loadData.samplePoint;
-    }
-
-    @Override
-    public Loader setLoader(Loader loader) {
-        return this.loader = loader;
-    }
-
-    @Override
-    public Loader getLoader() {
-        return this.loader;
     }
 
     @Override
@@ -255,8 +267,8 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     }
 
     @Override
-    public Status validate() {
-        StatusImpl ret = new StatusImpl();
+    public Status<Object> validate() {
+        StatusImpl<Object> ret = new StatusImpl<Object>();
         if (loadData != null)
             loader.validate(loadData,ret);
         return ret;

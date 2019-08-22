@@ -1,5 +1,6 @@
 package com.mattymatty.RegionalPathfinder.core.graph;
 
+
 import org.bukkit.Location;
 
 public class Node {
