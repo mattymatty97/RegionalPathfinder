@@ -19,13 +19,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class AsynchronousLoader implements Loader<Location> {
 
     //getting the valid locations inside the region
     @Override
     public void load(LoadData data, StatusImpl<Location[]> status) {
-        new Thread(() -> {
+        Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(),() -> {
             boolean locked = false;
             long tic = System.currentTimeMillis();
             try {
@@ -38,11 +39,35 @@ public class AsynchronousLoader implements Loader<Location> {
                         () -> Logger.info("Started loading region: " + data.region.getName()));
                 preLoad(data);
                 Semaphore tmp = new Semaphore(0);
-                status.percentage=0.01f;
+                status.percentage = 0.01f;
                 status.setStatus(2);
-                Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),
-                        () -> _load(0, 0, data, status, tmp));
-                tmp.acquire();
+                long tick_skip = RegionalPathfinder.getInstance().getConfig().getInt("async-tick-delay");
+                AtomicInteger i = new AtomicInteger(0);
+                AtomicInteger count = new AtomicInteger(0);
+                while (i.get() <(data.z_size * data.y_size * data.x_size)){
+                    Bukkit.getScheduler().runTaskLater(RegionalPathfinder.getInstance(),
+                            () -> _load(i, count, data, status, tmp),tick_skip);
+                    tmp.acquire();
+                }
+
+                if (count.get() != 0) {
+                    data.status = LoadData.Status.LOADED;
+                    status.setProduct(new Location[]{data.lowerCorner, data.upperCorner});
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),
+                            () -> {
+                                Logger.info("Loaded region: " + data.region.getName());
+                                Logger.fine("server got halted for: " + status.syncTime + " ms");
+                                Logger.fine("total compute time: " + status.totTime + " ms");
+                            });
+                } else {
+                    data.status = null;
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),
+                            () -> {
+                                Logger.info("Failed loading region: " + data.region.getName());
+                                Logger.fine("server got halted for: " + status.syncTime + " ms");
+                                Logger.fine("total compute time: " + status.totTime + " ms");
+                            });
+                }
                 long toc = System.currentTimeMillis();
                 status.percentage=1f;
                 status.totTime = (toc - tic);
@@ -54,16 +79,15 @@ public class AsynchronousLoader implements Loader<Location> {
                     data.region.lock.unlock();
                 status.setStatus(4);
             }
-        }).start();
+        });
     }
 
-    private void _load(int start_i, int count, LoadData data, StatusImpl<Location[]> status, Semaphore tmp) {
+    private void _load(AtomicInteger start_i, AtomicInteger count, LoadData data, StatusImpl<Location[]> status, Semaphore tmp) {
         long tic = System.currentTimeMillis();
         long max_time = RegionalPathfinder.getInstance().getConfig().getInt("async-max-halt-time");
-        long tick_skip = RegionalPathfinder.getInstance().getConfig().getInt("async-tick-delay");
         //visit all the points inside the region
         int i = 0;
-        for (i = start_i;
+        for (i = start_i.get();
              (i < data.z_size * data.y_size * data.x_size)
                      && (System.currentTimeMillis() < (tic + (max_time * 0.9)))
                 ; i++) {
@@ -73,7 +97,7 @@ public class AsynchronousLoader implements Loader<Location> {
             Location actual = cloneLoc(data.lowerCorner).add(x, y, z);
             //test if the point is a valid point
             if (data.region.getEntity().isValidLocation(actual)) {
-                count++;
+                count.incrementAndGet();
                 Node node = new Node(actual, i);
                 data.graph.addVertex(node);
                 data.nodesMap.put(i, node);
@@ -86,34 +110,14 @@ public class AsynchronousLoader implements Loader<Location> {
 
         status.percentage = ((float)i/(data.z_size * data.y_size * data.x_size));
         status.setStatus(2);
-
-        if (i != (data.z_size * data.y_size * data.x_size)) {
-            int finalI = i;
-            int finalCount = count;
-            Bukkit.getScheduler().runTaskLater(RegionalPathfinder.getInstance(),
-                    () -> _load(finalI, finalCount, data, status, tmp), tick_skip);
-            return;
-        }
-
-        if (count != 0) {
-            data.status = LoadData.Status.LOADED;
-            status.setProduct(new Location[]{data.lowerCorner, data.upperCorner});
-            Logger.info("Loaded region: " + data.region.getName());
-            Logger.fine("server got halted for: " + status.syncTime + " ms");
-            Logger.fine("total compute time: " + status.totTime + " ms");
-        } else {
-            data.status = null;
-            Logger.info("Failed loading region: " + data.region.getName());
-            Logger.fine("server got halted for: " + status.syncTime + " ms");
-            Logger.fine("total compute time: " + status.totTime + " ms");
-        }
+        start_i.set(i);
         tmp.release();
     }
 
     //extracting the reachable locations and adding them to the graph
     @Override
     public void evaluate(LoadData data, StatusImpl<Location> status) {
-        new Thread(() -> {
+        Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(),() -> {
             boolean locked = false;
             long tic = System.currentTimeMillis();
             long toc;
@@ -136,10 +140,14 @@ public class AsynchronousLoader implements Loader<Location> {
 
                 status.percentage=0.01f;
                 status.setStatus(2);
-                Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),
-                        () -> _evaluate(data, queue, status, tmp));
 
-                tmp.acquire();
+                long tick_skip = RegionalPathfinder.getInstance().getConfig().getInt("async-tick-delay");
+
+                while (!queue.isEmpty()) {
+                    Bukkit.getScheduler().runTaskLater(RegionalPathfinder.getInstance(),
+                            () -> _evaluate(data, queue, status, tmp),tick_skip);
+                    tmp.acquire();
+                }
 
                 StrongConnectivityAlgorithm<Node, Edge> scAlg =
                         new KosarajuStrongConnectivityInspector<>(data.graph);
@@ -187,7 +195,7 @@ public class AsynchronousLoader implements Loader<Location> {
                     data.region.lock.unlock();
                 status.setStatus(4);
             }
-        }).start();
+        });
     }
 
     private void _evaluate(LoadData data, Queue<Node> queue, StatusImpl status, Semaphore sem) {
@@ -213,8 +221,8 @@ public class AsynchronousLoader implements Loader<Location> {
                 int dest_z = (z + dz);
 
                 if (dest_x >= 0 && dest_x < data.x_size &&
-                        dest_y >= 0 && dest_y <= data.y_size &&
-                        dest_z >= 0 && dest_z <= data.z_size) {
+                        dest_y >= 0 && dest_y < data.y_size &&
+                        dest_z >= 0 && dest_z < data.z_size) {
                     int dest_id = dest_x + dest_z * data.x_size + dest_y * data.x_size * data.z_size;
                     Node dest = data.nodesMap.get(dest_id);
 
@@ -238,19 +246,12 @@ public class AsynchronousLoader implements Loader<Location> {
         status.percentage = ((tot-queue.size())/(float)tot)*(0.90f);
         status.setStatus(2);
 
-        if (!queue.isEmpty()) {
-            Bukkit.getScheduler().runTaskLater(RegionalPathfinder.getInstance(),
-                    () -> _evaluate(data, queue, status, sem), tick_skip);
-            return;
-        }
-
         sem.release();
-
     }
 
     @Override
     public void validate(LoadData data, StatusImpl status) {
-        new Thread(() -> {
+        Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(),() -> {
             boolean locked = false;
             long tic = System.currentTimeMillis();
             long toc;
@@ -273,10 +274,16 @@ public class AsynchronousLoader implements Loader<Location> {
                 status.percentage=0.01f;
                 status.setStatus(2);
                 Semaphore tmp = new Semaphore(0);
-                Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),
-                        () -> _validate(nodeQueue, data, status, tmp));
 
-                tmp.acquire();
+                long tick_skip = RegionalPathfinder.getInstance().getConfig().getInt("async-tick-delay");
+                while (!nodeQueue.isEmpty()) {
+                    Bukkit.getScheduler().runTaskLater(RegionalPathfinder.getInstance(),
+                            () -> _validate(nodeQueue, data, status, tmp),tick_skip);
+                    tmp.acquire();
+                }
+
+
+                data.status = LoadData.Status.VALIDATED;
                 toc = System.currentTimeMillis();
                 status.totTime = (toc - tic);
                 status.percentage=1f;
@@ -294,7 +301,7 @@ public class AsynchronousLoader implements Loader<Location> {
                     data.region.lock.unlock();
                 status.setStatus(4);
             }
-        }).start();
+        });
     }
 
     private void _validate(Queue<Node> queue, LoadData data, StatusImpl status, Semaphore sem) {
@@ -323,13 +330,7 @@ public class AsynchronousLoader implements Loader<Location> {
         status.percentage = ((tot-queue.size())/(float)tot);
         status.setStatus(2);
 
-        if (queue.isEmpty()) {
-            data.status = LoadData.Status.VALIDATED;
-            sem.release();
-        } else {
-            Bukkit.getScheduler().runTaskLater(RegionalPathfinder.getInstance(),
-                    () -> _validate(queue, data, status, sem), tick_skip);
-        }
+        sem.release();
     }
 
     private void preLoad(LoadData data) {
