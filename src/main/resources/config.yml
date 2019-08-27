@@ -3,7 +3,7 @@ config-version: 1
 
 #the maximum sequential time an async operation should halt the server
 #in milliseconds
-async-max-halt-time: 25
+async-max-halt-time: 10
 
 #how many ticks to wait till next sync operation
 async-tick-delay: 3

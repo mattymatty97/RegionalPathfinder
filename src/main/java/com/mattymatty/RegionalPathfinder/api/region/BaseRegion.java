@@ -17,5 +17,10 @@ public interface BaseRegion extends Region {
 
     Entity getEntity();
 
+    //a method to redo all the loading,evaluating and verifing
+    Status<Location[]> load();
+
+    Status<Location> evaluate();
+
 
 }

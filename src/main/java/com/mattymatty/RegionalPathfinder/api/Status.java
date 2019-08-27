@@ -21,7 +21,15 @@ public interface Status<T> {
 
     T getProduct();
 
-    Status<T> addListener(Consumer<Status<T>> callback);
+    Status<T> setOnSchedule(Runnable onSchedule);
+    Status<T> setOnSyncSchedule(Runnable onSyncSchedule);
 
-    Status<T> clearListeners();
+    Status<T> setOnProgress(Consumer<Float> onProgress);
+    Status<T> setOnSyncProgress(Consumer<Float> onSyncProgress);
+
+    Status<T> setOnDone(Consumer<T> onDone);
+    Status<T> setOnSyncDone(Consumer<T> onSyncDone);
+
+    Status<T> setOnException(Consumer<Exception> onException);
+    Status<T> setOnSyncException(Consumer<Exception> onSyncException);
 }

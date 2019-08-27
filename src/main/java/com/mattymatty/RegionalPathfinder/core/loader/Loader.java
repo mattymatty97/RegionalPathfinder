@@ -16,7 +16,7 @@ public interface Loader<T> {
 
     void evaluate(LoadData data, StatusImpl<T> status);
 
-    void validate(LoadData data, StatusImpl status);
+    void validate(LoadData data, StatusImpl<Boolean> status);
 
     default List<Location> getValid(LoadData data) {
 

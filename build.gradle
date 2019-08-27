@@ -5,7 +5,6 @@ plugins {
 }
 
 group 'mattymatty'
-version '0.1-BETA'
 
 sourceCompatibility = 1.8
 

@@ -1,7 +1,6 @@
 package com.mattymatty.RegionalPathfinder.api.region;
 
 import com.mattymatty.RegionalPathfinder.api.Status;
-import com.mattymatty.RegionalPathfinder.core.region.RegionImpl;
 import org.bukkit.Location;
 import org.bukkit.World;
 
@@ -12,10 +11,6 @@ import java.util.List;
  */
 
 public interface Region {
-
-    static Region createRegion(String name, RegionType type) {
-        return RegionImpl.createRegion(name, type);
-    }
 
     int getID();
 
@@ -45,13 +40,27 @@ public interface Region {
     //if this region is ready to be used
     boolean isValid();
 
-    //a method to redo all the loading,evaluating and verifing
-    Status load();
 
-    Status evaluate();
+    Status<Boolean> validate();
 
-    Status validate();
+    Status<Path> getPath(Location start, Location end);
 
-    Status<List<Location>> getPath(Location start, Location end);
+    class Path {
+        private final List<Location> path;
+        private final double weight;
+
+        public List<Location> getPath() {
+            return path;
+        }
+
+        public double getWeight() {
+            return weight;
+        }
+
+        public Path(List<Location> path, double weight) {
+            this.path = path;
+            this.weight = weight;
+        }
+    }
 
 }

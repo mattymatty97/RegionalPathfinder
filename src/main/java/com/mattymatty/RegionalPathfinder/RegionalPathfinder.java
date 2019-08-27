@@ -2,9 +2,6 @@ package com.mattymatty.RegionalPathfinder;
 
 import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.api.region.RegionType;
-import com.mattymatty.RegionalPathfinder.core.loader.AsynchronousLoader;
-import com.mattymatty.RegionalPathfinder.core.loader.Loader;
-import com.mattymatty.RegionalPathfinder.core.region.BaseRegionImpl;
 import com.mattymatty.RegionalPathfinder.core.region.RegionImpl;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -44,7 +41,7 @@ public class RegionalPathfinder extends JavaPlugin {
     }
 
     public Region createRegion(String name, RegionType type) {
-        Region region = Region.createRegion(name, type);
+        Region region = RegionImpl.createRegion(name, type);
         regionMap.put(name, region);
         Logger.fine("Created " + ((type == RegionType.BASE) ? "base" : "extended") + " region: " + name);
         return region;

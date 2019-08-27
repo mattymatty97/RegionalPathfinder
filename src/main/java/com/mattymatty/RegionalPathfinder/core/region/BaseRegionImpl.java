@@ -1,5 +1,7 @@
 package com.mattymatty.RegionalPathfinder.core.region;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.mattymatty.RegionalPathfinder.Logger;
 import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.api.Status;
@@ -17,9 +19,11 @@ import com.mattymatty.RegionalPathfinder.exeptions.RegionException;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.jgrapht.GraphPath;
 import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
@@ -34,6 +38,8 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     private Entity entity = new PlayerEntity();
     private LoadData loadData;
     private Loader<Location> loader = new AsynchronousLoader();
+    private Cache<Node, ShortestPathAlgorithm.SingleSourcePaths<Node, Edge>> sourceCache = CacheBuilder.newBuilder().softValues()
+            .maximumSize(15).build();
 
     //METHODS FROM Region
 
@@ -135,8 +141,29 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     }
 
     @Override
-    public Status<List<Location>> getPath(Location start, Location end) {
-        StatusImpl<List<Location>> status = new StatusImpl<>();
+    public Path _getPath(Location start, Location end) {
+        Location actual_s = new Location(start.getWorld(), start.getBlockX(), start.getBlockY(), start.getBlockZ()).add(0.5, 0.5, 0.5);
+        Location actual_e = new Location(end.getWorld(), end.getBlockX(), end.getBlockY(), end.getBlockZ()).add(0.5, 0.5, 0.5);
+
+        Node sNode = loadData.getNode(actual_s);
+        Node eNode = loadData.getNode(actual_e);
+        GraphPath<Node,Edge> path = null;
+
+
+        try {
+            ShortestPathAlgorithm.SingleSourcePaths<Node, Edge> iPaths =
+                    sourceCache.get(sNode,()->loadData.getShortestPath().getPaths(sNode));
+            path = iPaths.getPath(eNode);
+        } catch (ExecutionException ignored) {
+        }
+
+
+        return (path!=null)?new Path(path.getVertexList().stream().map(Node::getLoc).collect(Collectors.toList()),path.getWeight()):null;
+    }
+
+    @Override
+    public Status<Path> getPath(Location start, Location end) {
+        StatusImpl<Path> status = new StatusImpl<>();
         new Thread(() -> {
             boolean locked = false;
             long tic = System.currentTimeMillis();
@@ -182,20 +209,21 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
                     Node sNode = loadData.getNode(actual_s);
                     Node eNode = loadData.getNode(actual_e);
-                    List<Node> path;
+                    GraphPath<Node,Edge> path;
 
                     status.setStatus(2);
 
-                    ShortestPathAlgorithm.SingleSourcePaths<Node, Edge> iPaths = loadData.getShortestPath().getPaths(sNode);
+                    ShortestPathAlgorithm.SingleSourcePaths<Node, Edge> iPaths =
+                            sourceCache.get(sNode,()->loadData.getShortestPath().getPaths(sNode));
 
-                    path = iPaths.getPath(eNode).getVertexList();
+                    path = iPaths.getPath(eNode);
 
                     status.totTime = (System.currentTimeMillis() - tic);
-                    status.setProduct(path.stream().map(Node::getLoc).collect(Collectors.toList()));
+                    status.setProduct((path!=null)?new Path(path.getVertexList().stream().map(Node::getLoc).collect(Collectors.toList()),path.getWeight()):null);
 
                     long toc = System.currentTimeMillis();
                     Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> {
-                        Logger.info(((!path.isEmpty()) ? "Found path" : "Failed pathfinding") + " in region: " + getName());
+                        Logger.info(((path!=null) ? "Found path" : "Failed pathfinding") + " in region: " + getName());
                         Logger.fine("Took: " + (toc - tic) + " ms");
                     });
                 } else {
@@ -226,6 +254,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     @Override
     public void delete() {
+        sourceCache.invalidateAll();
     }
 
     @Override
@@ -250,6 +279,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
         StatusImpl<Location[]> ret = new StatusImpl<>();
         if (loadData != null)
             loader.load(loadData, ret);
+        sourceCache.invalidateAll();
         return ret;
     }
 
@@ -258,12 +288,14 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
         StatusImpl<Location> ret = new StatusImpl<>();
         if (loadData != null)
             loader.evaluate(loadData, ret);
+        sourceCache.invalidateAll();
         return ret;
     }
 
     @Override
-    public Status<Object> validate() {
-        StatusImpl<Object> ret = new StatusImpl<Object>();
+    public Status<Boolean> validate() {
+        StatusImpl<Boolean> ret = new StatusImpl<>();
+        ret.setProduct(false);
         if (loadData != null)
             loader.validate(loadData, ret);
         return ret;

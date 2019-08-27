@@ -34,6 +34,8 @@ public interface RegionImpl extends Region {
 
     Loader getLoader();
 
+    Path _getPath(Location start, Location end);
+
     //a cancellation method
     void delete();
 }

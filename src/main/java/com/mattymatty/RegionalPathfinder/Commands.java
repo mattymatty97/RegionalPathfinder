@@ -16,7 +16,6 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Commands implements CommandExecutor {
@@ -46,170 +45,144 @@ public class Commands implements CommandExecutor {
                 } else {
                     Region region = plugin.getRegion(args[0]);
                     if (region != null) {
-                        switch (args[1].toLowerCase()) {
-                            case "delete":
-                                plugin.removeRegion(region);
-                                break;
+                        if(region instanceof BaseRegion) {
+                            BaseRegion baseRegion = (BaseRegion) region;
+                            switch (args[1].toLowerCase()) {
+                                case "delete":
+                                    plugin.removeRegion(region);
+                                    break;
 
-                            case "set": {
-                                if (args.length == 3) {
-                                    switch (args[2].toLowerCase()) {
-                                        case "corners":
-                                            if (pos1 != null && pos2 != null) {
-                                                Status<Location[]> status = ((BaseRegion) region).setCorners(pos1, pos2);
+                                case "set": {
+                                    if (args.length == 3) {
+                                        switch (args[2].toLowerCase()) {
+                                            case "corners":
+                                                if (pos1 != null && pos2 != null) {
+                                                    Status<Location[]> status = baseRegion.setCorners(pos1, pos2);
+                                                    if (status != null) {
+                                                        status.setOnSyncDone((product) -> sender.sendMessage("Successfully added corners and loaded region" +
+                                                                                "\ntook: " + status.getTimeTotal() + " ms" +
+                                                                                "\nand halted server for: " + status.getTimeSync() + " ms")
+                                                        ).setOnSyncException((ex) -> sender.sendMessage("Exception loading corners" +
+                                                                                "\ntook: " + status.getTimeTotal() + " ms" +
+                                                                                "\nand halted server for: " + status.getTimeSync() + " ms"));
+
+                                                        AtomicLong next_tic = new AtomicLong(0);
+
+                                                        status.setOnSyncProgress((progress) -> {
+                                                                if (System.currentTimeMillis() > next_tic.get()) {
+                                                                    sender.sendMessage("Loading: " + String.format("%.2f", progress * 100) + "%");
+                                                                    next_tic.set(System.currentTimeMillis() + 100);
+                                                                }
+                                                        });
+
+                                                    } else {
+                                                        sender.sendMessage("Error loading corners");
+                                                    }
+                                                } else {
+                                                    sender.sendMessage("Error set the positions first (pos1, pos2)");
+                                                }
+                                                return true;
+                                            case "samplepoint":
+                                                Status<Location> status = ((BaseRegion) region).setSamplePoint(((Player) sender).getLocation());
                                                 if (status != null) {
-                                                    status.addListener((stat) -> {
-                                                        if (stat.isDone())
-                                                            plugin.getServer().getScheduler().runTask(plugin,
-                                                                    () -> sender.sendMessage("Successfully added corners and loaded region" +
-                                                                            "\ntook: " + stat.getTimeTotal() + " ms" +
-                                                                            "\nand halted server for: " + stat.getTimeSync() + " ms"));
-                                                    }).addListener((stat) -> {
-                                                        if (stat.hasException())
-                                                            plugin.getServer().getScheduler().runTask(plugin,
-                                                                    () -> sender.sendMessage("Exception loading corners" +
-                                                                            "\ntook: " + stat.getTimeTotal() + " ms" +
-                                                                            "\nand halted server for: " + stat.getTimeSync() + " ms"));
-                                                    });
+                                                    status.setOnSyncDone((product) -> sender.sendMessage("Successfully set sample point and evaluated region" +
+                                                                            "\ntook: " + status.getTimeTotal() + " ms" +
+                                                                            "\nand halted server for: " + status.getTimeSync() + " ms")
+                                                    ).setOnSyncException((ex) -> sender.sendMessage("Exception setting sample point" +
+                                                                            "\ntook: " + status.getTimeTotal() + " ms" +
+                                                                            "\nand halted server for: " + status.getTimeSync() + " ms"));
 
                                                     AtomicLong next_tic = new AtomicLong(0);
 
-                                                    status.addListener((stat) -> {
-                                                        if (stat.isRunning())
-                                                            if(System.currentTimeMillis()>next_tic.get()){
-                                                                plugin.getServer().getScheduler().runTask(plugin,
-                                                                    () -> sender.sendMessage("Loading: "+String.format("%.2f",stat.getPercentage()*100)+"%"));
-                                                                next_tic.set(System.currentTimeMillis()+500);
+                                                    status.setOnSyncProgress((progress) -> {
+                                                            if (System.currentTimeMillis() > next_tic.get()) {
+                                                                sender.sendMessage("Evaluating: " + String.format("%.2f", progress * 100) + "%");
+                                                                next_tic.set(System.currentTimeMillis() + 100);
                                                             }
                                                     });
-
                                                 } else {
-                                                    sender.sendMessage("Error loading corners");
+                                                    sender.sendMessage("Error setting sample point");
                                                 }
-                                            } else {
-                                                sender.sendMessage("Error set the positions first (pos1, pos2)");
-                                            }
-                                            return true;
-                                        case "samplepoint":
-                                            Status<Location> status = ((BaseRegion) region).setSamplePoint(((Player) sender).getLocation());
-                                            if (status != null) {
-                                                status.addListener((stat) -> {
-                                                    if (stat.isDone())
-                                                        plugin.getServer().getScheduler().runTask(plugin,
-                                                                () -> sender.sendMessage("Successfully set sample point and evaluated region" +
-                                                                        "\ntook: " + stat.getTimeTotal() + " ms" +
-                                                                        "\nand halted server for: " + stat.getTimeSync() + " ms"));
-                                                }).addListener((stat) -> {
-                                                    if (stat.hasException())
-                                                        plugin.getServer().getScheduler().runTask(plugin,
-                                                                () -> sender.sendMessage("Exception setting sample point" +
-                                                                        "\ntook: " + stat.getTimeTotal() + " ms" +
-                                                                        "\nand halted server for: " + stat.getTimeSync() + " ms"));
-                                                });
-
-                                                AtomicLong next_tic = new AtomicLong(0);
-
-                                                status.addListener((stat) -> {
-                                                    if (stat.isRunning())
-                                                        if(System.currentTimeMillis()>next_tic.get()){
-                                                            plugin.getServer().getScheduler().runTask(plugin,
-                                                                    () -> sender.sendMessage("Evaluating: "+String.format("%.2f",stat.getPercentage()*100)+"%"));
-                                                            next_tic.set(System.currentTimeMillis()+500);
-                                                        }
-                                                });
-                                            } else {
-                                                sender.sendMessage("Error setting sample point");
-                                            }
-                                            return true;
-                                        default:
-                                            return false;
-                                    }
-                                }
-                                return false;
-                            }
-                            case "validate": {
-                                Status stat = region.validate();
-                                stat.addListener((s) -> {
-                                    if (stat.isDone())
-                                        Bukkit.getScheduler().runTask(plugin, () -> {
-                                            if (region.isValid()) {
-                                                sender.sendMessage("Successfully validated the region" +
-                                                        "\ntook: " + stat.getTimeTotal() + " ms" +
-                                                        "\nand halted server for: " + stat.getTimeSync() + " ms");
-                                            } else {
-                                                sender.sendMessage("Error Validating Region" +
-                                                        "\ntook: " + stat.getTimeTotal() + " ms" +
-                                                        "\nand halted server for: " + stat.getTimeSync() + " ms");
-                                            }
-                                        });
-                                });
-                                stat.addListener((s) -> {
-                                    if (stat.hasException())
-                                        Bukkit.getScheduler().runTask(plugin, () ->
-                                                sender.sendMessage("Exception setting sample point" +
-                                                        "\ntook: " + stat.getTimeTotal() + " ms" +
-                                                        "\nand halted server for: " + stat.getTimeSync() + " ms"));
-                                });
-
-                                AtomicLong next_tic = new AtomicLong(0);
-
-                                stat.addListener((status) -> {
-                                    if (stat.isRunning())
-                                        if(System.currentTimeMillis()>next_tic.get()){
-                                            plugin.getServer().getScheduler().runTask(plugin,
-                                                    () -> sender.sendMessage("Validating: "+String.format("%.2f",stat.getPercentage()*100)+"%"));
-                                            next_tic.set(System.currentTimeMillis()+500);
+                                                return true;
+                                            default:
+                                                return false;
                                         }
-                                });
-                                return true;
-                            }
-                            case "validloc":
-                            case "validlocations": {
-                                List<Location> locations = region.getValidLocations();
-                                if (locations.isEmpty()) {
-                                    sender.sendMessage("Error no valid locations");
-                                } else {
-                                    showParticles(locations);
-                                    sender.sendMessage("Shown particles onto valid Locations, remove with /regionalpathfinder particle");
+                                    }
+                                    return false;
                                 }
-                                return true;
-                            }
-                            case "reachableloc":
-                            case "reachablelocations": {
-                                List<Location> locations = region.getReachableLocations();
-                                if (locations.isEmpty()) {
-                                    sender.sendMessage("Error no reachable locations");
-                                } else {
-                                    showParticles(locations);
-                                    sender.sendMessage("Shown particles onto reachable Locations, remove with /regionalpathfinder particle");
-                                }
-                                return true;
-                            }
-                            case "path": {
-                                region.getPath(pos1, pos2).addListener((status) -> {
-                                    if (status.isDone()) {
-                                        if (status.getProduct() == null) {
-                                            plugin.getServer().getScheduler().runTask(plugin, () -> sender.sendMessage("Error no path found" +
-                                                    "\ntook: " + status.getTimeTotal() + " ms" +
-                                                    "\nand halted server for: " + status.getTimeSync() + " ms"));
-                                        } else {
-                                            plugin.getServer().getScheduler().runTask(plugin, () -> {
-                                                showParticles(status.getProduct(), true);
-                                                sender.sendMessage("Shown particles onto path, remove with /regionalpathfinder particle" +
-                                                        "\ntook: " + status.getTimeTotal() + " ms" +
-                                                        "\nand halted server for: " + status.getTimeSync() + " ms");
+                                case "validate": {
+                                    Status<Boolean> stat = region.validate();
+                                    stat.setOnSyncDone((product) -> {
+                                            Bukkit.getScheduler().runTask(plugin, () -> {
+                                                if (product) {
+                                                    sender.sendMessage("Successfully validated the region" +
+                                                            "\ntook: " + stat.getTimeTotal() + " ms" +
+                                                            "\nand halted server for: " + stat.getTimeSync() + " ms");
+                                                } else {
+                                                    sender.sendMessage("Error Validating Region" +
+                                                            "\ntook: " + stat.getTimeTotal() + " ms" +
+                                                            "\nand halted server for: " + stat.getTimeSync() + " ms");
+                                                }
                                             });
-                                        }
+                                    });
+                                    stat.setOnSyncException((ex) -> sender.sendMessage("Exception setting sample point" +
+                                                            "\ntook: " + stat.getTimeTotal() + " ms" +
+                                                            "\nand halted server for: " + stat.getTimeSync() + " ms")
+                                    );
+
+                                    AtomicLong next_tic = new AtomicLong(0);
+
+                                    stat.setOnSyncProgress((progress) -> {
+                                            if (System.currentTimeMillis() > next_tic.get()) {
+                                                sender.sendMessage("Validating: " + String.format("%.2f", progress * 100) + "%");
+                                                next_tic.set(System.currentTimeMillis() + 100);
+                                            }
+                                    });
+                                    return true;
+                                }
+                                case "validloc":
+                                case "validlocations": {
+                                    List<Location> locations = region.getValidLocations();
+                                    if (locations.isEmpty()) {
+                                        sender.sendMessage("Error no valid locations");
+                                    } else {
+                                        showParticles(locations);
+                                        sender.sendMessage("Shown particles onto valid Locations, remove with /regionalpathfinder particle");
                                     }
-                                }).addListener((status) -> {
-                                    if (status.hasException())
-                                        plugin.getServer().getScheduler().runTask(plugin, () -> sender.sendMessage("Exception while pathfinding" +
-                                                "\ntook: " + status.getTimeTotal() + " ms" +
-                                                "\nand halted server for: " + status.getTimeSync() + " ms"));
-                                }).addListener((status)->{
-                                    if (status.isRunning())
-                                        plugin.getServer().getScheduler().runTask(plugin, () -> sender.sendMessage("Started Pathfinding"));
-                                });
+                                    return true;
+                                }
+                                case "reachableloc":
+                                case "reachablelocations": {
+                                    List<Location> locations = region.getReachableLocations();
+                                    if (locations.isEmpty()) {
+                                        sender.sendMessage("Error no reachable locations");
+                                    } else {
+                                        showParticles(locations);
+                                        sender.sendMessage("Shown particles onto reachable Locations, remove with /regionalpathfinder particle");
+                                    }
+                                    return true;
+                                }
+                                case "path": {
+                                    Status<Region.Path> status = region.getPath(pos1, pos2);
+                                    status.setOnSyncDone((product) -> {
+                                        if (product == null) {
+                                            sender.sendMessage("Error no path found" +
+                                                    "\ntook: " + status.getTimeTotal() + " ms" +
+                                                    "\nand halted server for: " + status.getTimeSync() + " ms");
+                                        } else {
+                                            showParticles(product.getPath(), true);
+                                            sender.sendMessage("Shown particles onto path, remove with /regionalpathfinder particle" +
+                                                    "\ntook: " + status.getTimeTotal() + " ms" +
+                                                    "\nand halted server for: " + status.getTimeSync() + " ms");
+                                        }
+                                    }).setOnSyncException((ex) ->
+                                            sender.sendMessage("Exception while pathfinding" +
+                                                    "\ntook: " + status.getTimeTotal() + " ms" +
+                                                    "\nand halted server for: " + status.getTimeSync() + " ms")
+                                    ).setOnSyncProgress((progress) ->
+                                            sender.sendMessage("Started Pathfinding")
+                                    );
+                                }
                             }
                         }
                         return false;
