@@ -8,13 +8,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public interface Loader<T> {
+public interface Loader {
     //max dimensions 1290 blocks each size
 
 
-    void load(LoadData data, StatusImpl<T[]> status);
+    void load(LoadData data, StatusImpl<Location[]> status);
 
-    void evaluate(LoadData data, StatusImpl<T> status);
+    void evaluate(LoadData data, StatusImpl<Location> status);
 
     void validate(LoadData data, StatusImpl<Boolean> status);
 

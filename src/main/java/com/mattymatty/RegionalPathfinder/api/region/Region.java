@@ -40,10 +40,17 @@ public interface Region {
     //if this region is ready to be used
     boolean isValid();
 
-
     Status<Boolean> validate();
 
     Status<Path> getPath(Location start, Location end);
+
+    default BaseRegion asBaseRegion(){
+        return (this instanceof BaseRegion)?(BaseRegion)this:null;
+    }
+
+    default ExtendedRegion asExtendedRegion(){
+        return (this instanceof ExtendedRegion)?(ExtendedRegion)this:null;
+    }
 
     class Path {
         private final List<Location> path;

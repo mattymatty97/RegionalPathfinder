@@ -11,9 +11,9 @@ import com.mattymatty.RegionalPathfinder.core.StatusImpl;
 import com.mattymatty.RegionalPathfinder.core.entity.PlayerEntity;
 import com.mattymatty.RegionalPathfinder.core.graph.Edge;
 import com.mattymatty.RegionalPathfinder.core.graph.Node;
-import com.mattymatty.RegionalPathfinder.core.loader.AsynchronousLoader;
 import com.mattymatty.RegionalPathfinder.core.loader.LoadData;
 import com.mattymatty.RegionalPathfinder.core.loader.Loader;
+import com.mattymatty.RegionalPathfinder.core.loader.SynchronousLoader;
 import com.mattymatty.RegionalPathfinder.exeptions.AsyncExecption;
 import com.mattymatty.RegionalPathfinder.exeptions.RegionException;
 import org.bukkit.Bukkit;
@@ -32,12 +32,12 @@ import java.util.stream.Collectors;
 
 public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
+    public static Loader loader = new SynchronousLoader();
     public final Lock lock = new ReentrantLock();
     private final int ID;
     private String Name;
     private Entity entity = new PlayerEntity();
     private LoadData loadData;
-    private Loader<Location> loader = new AsynchronousLoader();
     private Cache<Node, ShortestPathAlgorithm.SingleSourcePaths<Node, Edge>> sourceCache = CacheBuilder.newBuilder().softValues()
             .maximumSize(15).build();
 
@@ -240,16 +240,6 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
             }
         }).start();
         return status;
-    }
-
-    @Override
-    public Loader setLoader(Loader loader) {
-        return this.loader = loader;
-    }
-
-    @Override
-    public Loader getLoader() {
-        return loader;
     }
 
     @Override

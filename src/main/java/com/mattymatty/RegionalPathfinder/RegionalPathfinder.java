@@ -1,7 +1,11 @@
 package com.mattymatty.RegionalPathfinder;
 
+import com.mattymatty.RegionalPathfinder.api.region.BaseRegion;
 import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.api.region.RegionType;
+import com.mattymatty.RegionalPathfinder.core.loader.AsynchronousLoader;
+import com.mattymatty.RegionalPathfinder.core.loader.Loader;
+import com.mattymatty.RegionalPathfinder.core.region.BaseRegionImpl;
 import com.mattymatty.RegionalPathfinder.core.region.RegionImpl;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -38,6 +42,12 @@ public class RegionalPathfinder extends JavaPlugin {
         super.onEnable();
         Objects.requireNonNull(this.getCommand("regionalpathfinder")).setExecutor(new Commands(this));
         Objects.requireNonNull(this.getCommand("regionalpathfinder")).setTabCompleter(new TabComplete());
+        Loader loader = new AsynchronousLoader();
+        getServer().getScheduler().runTaskLater(this,
+                ()-> {
+                    Logger.info("Changed to Asynchronous Loader");
+                    BaseRegionImpl.loader = loader;
+                },1);
     }
 
     public Region createRegion(String name, RegionType type) {

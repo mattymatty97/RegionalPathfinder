@@ -30,10 +30,6 @@ public interface RegionImpl extends Region {
         return common;
     }
 
-    Loader setLoader(Loader loader);
-
-    Loader getLoader();
-
     Path _getPath(Location start, Location end);
 
     //a cancellation method

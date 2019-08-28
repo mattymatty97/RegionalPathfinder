@@ -22,7 +22,7 @@ import java.util.Queue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class AsynchronousLoader implements Loader<Location> {
+public class AsynchronousLoader implements Loader {
 
     private BukkitTask looper;
     //getting the valid locations inside the region
@@ -56,6 +56,11 @@ public class AsynchronousLoader implements Loader<Location> {
 
                 tmp.acquire();
                 looper.cancel();
+
+                if(status.hasException()) {
+                    data.region.lock.unlock();
+                    return;
+                }
 
                 if (count.get() != 0) {
                     data.status = LoadData.Status.LOADED;
@@ -93,33 +98,43 @@ public class AsynchronousLoader implements Loader<Location> {
         long tic = System.currentTimeMillis();
         long max_time = RegionalPathfinder.getInstance().getConfig().getInt("async-max-halt-time");
         //visit all the points inside the region
-        int i = 0;
-        for (i = start_i.get();
-             (i < data.z_size * data.y_size * data.x_size)
-                     && (System.currentTimeMillis() < (tic + (max_time * 0.9)))
-                ; i++) {
-            int y = ((i / data.x_size) / data.z_size) % data.y_size;
-            int z = (i / data.x_size) % data.z_size;
-            int x = i % data.x_size;
-            Location actual = cloneLoc(data.lowerCorner).add(x, y, z);
-            //test if the point is a valid point
-            if (data.region.getEntity().isValidLocation(actual)) {
-                count.incrementAndGet();
-                Node node = new Node(actual, i);
-                data.graph.addVertex(node);
-                data.nodesMap.put(i, node);
+        try {
+            int i = 0;
+            for (i = start_i.get();
+                 (i < data.z_size * data.y_size * data.x_size)
+                         && (System.currentTimeMillis() < (tic + (max_time * 0.9)))
+                    ; i++) {
+                int y = ((i / data.x_size) / data.z_size) % data.y_size;
+                int z = (i / data.x_size) % data.z_size;
+                int x = i % data.x_size;
+                Location actual = cloneLoc(data.lowerCorner).add(x, y, z);
+                if(!actual.getChunk().isLoaded())
+                    throw new LoaderException("Chunk not loaded",data.region);
+                //test if the point is a valid point
+                if (data.region.getEntity().isValidLocation(actual)) {
+                    count.incrementAndGet();
+                    Node node = new Node(actual, i);
+                    data.graph.addVertex(node);
+                    data.nodesMap.put(i, node);
+                }
             }
-        }
 
-        long toc = System.currentTimeMillis();
-        status.syncTime += (toc - tic);
-        status.totTime += (toc - tic);
+            long toc = System.currentTimeMillis();
+            status.syncTime += (toc - tic);
+            status.totTime += (toc - tic);
 
-        status.percentage = ((float)i/(data.z_size * data.y_size * data.x_size));
-        status.setStatus(2);
-        start_i.set(i);
+            status.percentage = ((float) i / (data.z_size * data.y_size * data.x_size));
+            status.setStatus(2);
+            start_i.set(i);
 
-        if(i >= (data.z_size * data.y_size * data.x_size)) {
+            if (i >= (data.z_size * data.y_size * data.x_size)) {
+                tmp.release();
+                looper.cancel();
+            }
+        }catch (Exception ex){
+            data.status = null;
+            status.ex = ex;
+            status.setStatus(4);
             tmp.release();
             looper.cancel();
         }
@@ -160,6 +175,11 @@ public class AsynchronousLoader implements Loader<Location> {
 
                 tmp.acquire();
                 looper.cancel();
+
+                if(status.hasException()){
+                    data.region.lock.unlock();
+                    return;
+                }
 
                 StrongConnectivityAlgorithm<Node, Edge> scAlg =
                         new KosarajuStrongConnectivityInspector<>(data.graph);
@@ -214,51 +234,59 @@ public class AsynchronousLoader implements Loader<Location> {
         long tic = System.currentTimeMillis();
         long max_time = RegionalPathfinder.getInstance().getConfig().getInt("async-max-halt-time");
         long tick_skip = RegionalPathfinder.getInstance().getConfig().getInt("async-tick-delay");
-        while (!queue.isEmpty() && (System.currentTimeMillis() < (tic + (max_time * 0.80)))) {
-            Node act = queue.poll();
-            assert act != null;
-            int y = ((act.getI() / data.x_size) / data.z_size) % data.y_size;
-            int z = (act.getI() / data.x_size) % data.z_size;
-            int x = act.getI() % data.x_size;
+        try {
+            while (!queue.isEmpty() && (System.currentTimeMillis() < (tic + (max_time * 0.80)))) {
+                Node act = queue.poll();
+                assert act != null;
+                int y = ((act.getI() / data.x_size) / data.z_size) % data.y_size;
+                int z = (act.getI() / data.x_size) % data.z_size;
+                int x = act.getI() % data.x_size;
 
-            Vector[] movements = data.region.getEntity().getAllowedMovements();
-            //iterate for all the possible movements
-            for (Vector movement : movements) {
-                int dx = movement.getBlockX();
-                int dz = movement.getBlockZ();
-                int dy = movement.getBlockY();
+                Vector[] movements = data.region.getEntity().getAllowedMovements();
+                //iterate for all the possible movements
+                for (Vector movement : movements) {
+                    int dx = movement.getBlockX();
+                    int dz = movement.getBlockZ();
+                    int dy = movement.getBlockY();
 
-                int dest_x = (x + dx);
-                int dest_y = (y + dy);
-                int dest_z = (z + dz);
+                    int dest_x = (x + dx);
+                    int dest_y = (y + dy);
+                    int dest_z = (z + dz);
 
-                if (dest_x >= 0 && dest_x < data.x_size &&
-                        dest_y >= 0 && dest_y < data.y_size &&
-                        dest_z >= 0 && dest_z < data.z_size) {
-                    int dest_id = dest_x + dest_z * data.x_size + dest_y * data.x_size * data.z_size;
-                    Node dest = data.nodesMap.get(dest_id);
+                    if (dest_x >= 0 && dest_x < data.x_size &&
+                            dest_y >= 0 && dest_y < data.y_size &&
+                            dest_z >= 0 && dest_z < data.z_size) {
+                        int dest_id = dest_x + dest_z * data.x_size + dest_y * data.x_size * data.z_size;
+                        Node dest = data.nodesMap.get(dest_id);
 
-                    //if dest is valid
-                    if (dest != null &&
-                            data.region.getEntity().extraMovementChecks(act.getLoc(), dest.getLoc())) {
-                        Edge edge = data.graph.addEdge(act, dest);
-                        data.graph.setEdgeWeight(edge, data.region.getEntity().movementCost(act.getLoc(), dest.getLoc()));
+                        //if dest is valid
+                        if (dest != null &&
+                                data.region.getEntity().extraMovementChecks(act.getLoc(), dest.getLoc())) {
+                            Edge edge = data.graph.addEdge(act, dest);
+                            data.graph.setEdgeWeight(edge, data.region.getEntity().movementCost(act.getLoc(), dest.getLoc()));
+                        }
                     }
+
                 }
-
             }
-        }
 
-        long toc = System.currentTimeMillis();
-        status.syncTime += (toc - tic);
-        status.totTime += (toc - tic);
+            long toc = System.currentTimeMillis();
+            status.syncTime += (toc - tic);
+            status.totTime += (toc - tic);
 
-        int tot = data.graph.vertexSet().size();
+            int tot = data.graph.vertexSet().size();
 
-        status.percentage = ((tot-queue.size())/(float)tot)*(0.90f);
-        status.setStatus(2);
+            status.percentage = ((tot - queue.size()) / (float) tot) * (0.90f);
+            status.setStatus(2);
 
-        if(queue.isEmpty()) {
+            if (queue.isEmpty()) {
+                sem.release();
+                looper.cancel();
+            }
+        }catch (Exception ex){
+            data.status = LoadData.Status.LOADED;
+            status.ex = ex;
+            status.setStatus(4);
             sem.release();
             looper.cancel();
         }
@@ -300,6 +328,11 @@ public class AsynchronousLoader implements Loader<Location> {
                 tmp.acquire();
                 looper.cancel();
 
+                if(status.hasException()){
+                    data.region.lock.unlock();
+                    return;
+                }
+
                 if(data.status == LoadData.Status.VALIDATING) {
                     data.status = LoadData.Status.VALIDATED;
                     status.setProduct(true);
@@ -330,27 +363,35 @@ public class AsynchronousLoader implements Loader<Location> {
         long max_time = RegionalPathfinder.getInstance().getConfig().getInt("async-max-halt-time");
         long tick_skip = RegionalPathfinder.getInstance().getConfig().getInt("async-tick-delay");
 
-        while (!queue.isEmpty() && System.currentTimeMillis() < (tic + (max_time * 0.9))) {
-            Node curr = queue.poll();
-            assert curr != null;
-            if (!data.region.getEntity().isValidLocation(curr.getLoc())) {
-                data.status = LoadData.Status.EVALUATED;
-                sem.release();
-                return;
+        try {
+            while (!queue.isEmpty() && System.currentTimeMillis() < (tic + (max_time * 0.9))) {
+                Node curr = queue.poll();
+                assert curr != null;
+                if (!data.region.getEntity().isValidLocation(curr.getLoc())) {
+                    data.status = LoadData.Status.EVALUATED;
+                    sem.release();
+                    return;
+                }
             }
-        }
 
-        long toc = System.currentTimeMillis();
+            long toc = System.currentTimeMillis();
 
-        status.totTime += (toc - tic);
-        status.syncTime += (toc - tic);
+            status.totTime += (toc - tic);
+            status.syncTime += (toc - tic);
 
-        int tot = data.reachableGraph.vertexSet().size();
+            int tot = data.reachableGraph.vertexSet().size();
 
-        status.percentage = ((tot-queue.size())/(float)tot);
-        status.setStatus(2);
+            status.percentage = ((tot - queue.size()) / (float) tot);
+            status.setStatus(2);
 
-        if(queue.isEmpty()) {
+            if (queue.isEmpty()) {
+                sem.release();
+                looper.cancel();
+            }
+        }catch (Exception ex){
+            data.status = LoadData.Status.EVALUATED;
+            status.ex = ex;
+            status.setStatus(4);
             sem.release();
             looper.cancel();
         }

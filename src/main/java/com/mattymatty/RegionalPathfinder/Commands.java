@@ -46,7 +46,7 @@ public class Commands implements CommandExecutor {
                     Region region = plugin.getRegion(args[0]);
                     if (region != null) {
                         if(region instanceof BaseRegion) {
-                            BaseRegion baseRegion = (BaseRegion) region;
+                            BaseRegion baseRegion = region.asBaseRegion();
                             switch (args[1].toLowerCase()) {
                                 case "delete":
                                     plugin.removeRegion(region);
