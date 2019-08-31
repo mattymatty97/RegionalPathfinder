@@ -1,6 +1,7 @@
 package com.mattymatty.RegionalPathfinder.api.region;
 
 import com.mattymatty.RegionalPathfinder.api.Status;
+import com.mattymatty.RegionalPathfinder.api.entity.Entity;
 import org.bukkit.Location;
 import org.bukkit.World;
 
@@ -36,6 +37,16 @@ public interface Region {
 
     //a getter for all the locations where the entity can stand near a point
     List<Location> getReachableLocations(Location center, int radius);
+
+    boolean isInRegion(Location location);
+    boolean isValidLocation(Location location);
+    boolean isReachableLocation(Location location);
+
+    //setter methods for entity
+    Entity setEntity(Entity entity);
+
+    Entity getEntity();
+
 
     //if this region is ready to be used
     boolean isValid();

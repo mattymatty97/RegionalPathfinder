@@ -1,8 +1,8 @@
 package com.mattymatty.RegionalPathfinder.core.graph;
 
+import org.bukkit.Location;
 import org.jgrapht.graph.DefaultWeightedEdge;
 
-import javax.xml.stream.Location;
 import java.util.List;
 
 public class Edge extends DefaultWeightedEdge {

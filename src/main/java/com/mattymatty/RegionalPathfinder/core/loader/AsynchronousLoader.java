@@ -13,7 +13,7 @@ import org.bukkit.util.Vector;
 import org.jgrapht.Graph;
 import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector;
 import org.jgrapht.alg.interfaces.StrongConnectivityAlgorithm;
-import org.jgrapht.alg.shortestpath.JohnsonShortestPaths;
+import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.builder.GraphTypeBuilder;
 
 import java.util.LinkedList;
@@ -209,7 +209,7 @@ public class AsynchronousLoader implements Loader {
                 }
 
                 data.reachableGraph = scs;
-                data.shortestPath = new JohnsonShortestPaths<>(data.getReachableGraph());
+                data.shortestPath = new DijkstraShortestPath<>(data.getReachableGraph());
 
                 status.totTime = (toc - tic);
                 status.setProduct(data.samplePoint);

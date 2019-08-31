@@ -23,7 +23,6 @@ import org.jgrapht.GraphPath;
 import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
 
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
@@ -132,6 +131,49 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     }
 
     @Override
+    public boolean isInRegion(Location location) {
+        boolean ret = false;
+        if (!lock.tryLock())
+            throw new AsyncExecption("Async operation still running on this region", this);
+        if(loadData!=null && loadData.getStatus().getValue() > LoadData.Status.LOADING.getValue()){
+
+            int dx = location.getBlockX()-loadData.lowerCorner.getBlockX();
+            int dy = location.getBlockY()-loadData.lowerCorner.getBlockY();
+            int dz = location.getBlockZ()-loadData.lowerCorner.getBlockZ();
+
+            ret = dx >= 0 && dx < loadData.getX_size() && dy >= 0 && dy < loadData.getY_size() && dz >= 0 && dz < loadData.getZ_size();
+        }
+        lock.unlock();
+        return ret;
+    }
+
+    @Override
+    public boolean isValidLocation(Location location) {
+        boolean ret = false;
+        if (!lock.tryLock())
+            throw new AsyncExecption("Async operation still running on this region", this);
+        if(loadData!=null && loadData.getStatus().getValue() > LoadData.Status.LOADING.getValue()){
+            Location actual_loc = new Location(location.getWorld(), location.getBlockX(), location.getBlockY(), location.getBlockZ()).add(0.5, 0.5, 0.5);
+            ret = loadData.getGraph().vertexSet().stream().map(Node::getLoc).anyMatch(l->l.equals(actual_loc));
+        }
+        lock.unlock();
+        return ret;
+    }
+
+    @Override
+    public boolean isReachableLocation(Location location) {
+        boolean ret = false;
+        if (!lock.tryLock())
+            throw new AsyncExecption("Async operation still running on this region", this);
+        if(loadData!=null && loadData.getStatus().getValue() > LoadData.Status.EVALUATING.getValue()){
+            Location actual_loc = new Location(location.getWorld(), location.getBlockX(), location.getBlockY(), location.getBlockZ()).add(0.5, 0.5, 0.5);
+            ret = loadData.getReachableGraph().vertexSet().stream().map(Node::getLoc).anyMatch(l->l.equals(actual_loc));
+        }
+        lock.unlock();
+        return ret;
+    }
+
+    @Override
     public boolean isValid() {
         if (!lock.tryLock())
             throw new AsyncExecption("Async operation still running on this region", this);
@@ -149,14 +191,10 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
         Node eNode = loadData.getNode(actual_e);
         GraphPath<Node,Edge> path = null;
 
-
         try {
-            ShortestPathAlgorithm.SingleSourcePaths<Node, Edge> iPaths =
-                    sourceCache.get(sNode,()->loadData.getShortestPath().getPaths(sNode));
-            path = iPaths.getPath(eNode);
-        } catch (ExecutionException ignored) {
+            path = getNodeEdgeGraphPath(sNode, eNode);
+        } catch (Exception ignored) {
         }
-
 
         return (path!=null)?new Path(path.getVertexList().stream().map(Node::getLoc).collect(Collectors.toList()),path.getWeight()):null;
     }
@@ -213,10 +251,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
                     status.setStatus(2);
 
-                    ShortestPathAlgorithm.SingleSourcePaths<Node, Edge> iPaths =
-                            sourceCache.get(sNode,()->loadData.getShortestPath().getPaths(sNode));
-
-                    path = iPaths.getPath(eNode);
+                    path = getNodeEdgeGraphPath(sNode, eNode);
 
                     status.totTime = (System.currentTimeMillis() - tic);
                     status.setProduct((path!=null)?new Path(path.getVertexList().stream().map(Node::getLoc).collect(Collectors.toList()),path.getWeight()):null);
@@ -240,6 +275,18 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
             }
         }).start();
         return status;
+    }
+
+    private GraphPath<Node, Edge> getNodeEdgeGraphPath(Node sNode, Node eNode) {
+        GraphPath<Node, Edge> path;
+        ShortestPathAlgorithm.SingleSourcePaths<Node, Edge> iPaths;
+        iPaths = sourceCache.getIfPresent(sNode);
+        if(iPaths==null) {
+            iPaths = loadData.getShortestPath().getPaths(sNode);
+            sourceCache.put(sNode,iPaths);
+        }
+        path = iPaths.getPath(eNode);
+        return path;
     }
 
     @Override
