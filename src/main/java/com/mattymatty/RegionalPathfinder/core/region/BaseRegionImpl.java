@@ -22,6 +22,8 @@ import org.bukkit.World;
 import org.jgrapht.GraphPath;
 import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
 
+import java.lang.ref.WeakReference;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -72,35 +74,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
         return world;
     }
 
-    @Override
-    public Location[] getCorners() {
-        if (!lock.tryLock())
-            throw new AsyncExecption("Async operation still running on this region", this);
-        Location[] ret = null;
-        if (loadData != null)
-            ret = new Location[]{
-                    loadData.lowerCorner,
-                    new Location(getWorld(),
-                            loadData.lowerCorner.getX(),
-                            loadData.lowerCorner.getY(),
-                            loadData.upperCorner.getZ()),
-                    new Location(getWorld(),
-                            loadData.upperCorner.getX(),
-                            loadData.lowerCorner.getY(),
-                            loadData.lowerCorner.getZ()),
-                    new Location(getWorld(),
-                            loadData.upperCorner.getX(),
-                            loadData.lowerCorner.getY(),
-                            loadData.upperCorner.getZ()),
-                    new Location(getWorld(),
-                            loadData.lowerCorner.getX(),
-                            loadData.upperCorner.getY(),
-                            loadData.lowerCorner.getZ()),
-                    loadData.upperCorner
-            };
-        lock.unlock();
-        return ret;
-    }
+    private Location lowerCorner;
 
     @Override
     public List<Location> getValidLocations() {
@@ -130,48 +104,9 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
         return null;
     }
 
-    @Override
-    public boolean isInRegion(Location location) {
-        boolean ret = false;
-        if (!lock.tryLock())
-            throw new AsyncExecption("Async operation still running on this region", this);
-        if(loadData!=null && loadData.getStatus().getValue() > LoadData.Status.LOADING.getValue()){
-
-            int dx = location.getBlockX()-loadData.lowerCorner.getBlockX();
-            int dy = location.getBlockY()-loadData.lowerCorner.getBlockY();
-            int dz = location.getBlockZ()-loadData.lowerCorner.getBlockZ();
-
-            ret = dx >= 0 && dx < loadData.getX_size() && dy >= 0 && dy < loadData.getY_size() && dz >= 0 && dz < loadData.getZ_size();
-        }
-        lock.unlock();
-        return ret;
-    }
-
-    @Override
-    public boolean isValidLocation(Location location) {
-        boolean ret = false;
-        if (!lock.tryLock())
-            throw new AsyncExecption("Async operation still running on this region", this);
-        if(loadData!=null && loadData.getStatus().getValue() > LoadData.Status.LOADING.getValue()){
-            Location actual_loc = new Location(location.getWorld(), location.getBlockX(), location.getBlockY(), location.getBlockZ()).add(0.5, 0.5, 0.5);
-            ret = loadData.getGraph().vertexSet().stream().map(Node::getLoc).anyMatch(l->l.equals(actual_loc));
-        }
-        lock.unlock();
-        return ret;
-    }
-
-    @Override
-    public boolean isReachableLocation(Location location) {
-        boolean ret = false;
-        if (!lock.tryLock())
-            throw new AsyncExecption("Async operation still running on this region", this);
-        if(loadData!=null && loadData.getStatus().getValue() > LoadData.Status.EVALUATING.getValue()){
-            Location actual_loc = new Location(location.getWorld(), location.getBlockX(), location.getBlockY(), location.getBlockZ()).add(0.5, 0.5, 0.5);
-            ret = loadData.getReachableGraph().vertexSet().stream().map(Node::getLoc).anyMatch(l->l.equals(actual_loc));
-        }
-        lock.unlock();
-        return ret;
-    }
+    private Location upperCorner;
+    private Location samplepoint;
+    private List<WeakReference<RegionImpl>> backreferences = new LinkedList<>();
 
     @Override
     public boolean isValid() {
@@ -183,20 +118,139 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     }
 
     @Override
+    public Location[] getCorners() {
+        if (!lock.tryLock())
+            throw new AsyncExecption("Async operation still running on this region", this);
+        Location[] ret = null;
+        if (loadData != null)
+            ret = new Location[]{
+                    loadData.lowerCorner,
+                    new Location(getWorld(),
+                            loadData.lowerCorner.getX(),
+                            loadData.lowerCorner.getY(),
+                            loadData.upperCorner.getZ()),
+                    new Location(getWorld(),
+                            loadData.upperCorner.getX(),
+                            loadData.lowerCorner.getY(),
+                            loadData.lowerCorner.getZ()),
+                    new Location(getWorld(),
+                            loadData.upperCorner.getX(),
+                            loadData.lowerCorner.getY(),
+                            loadData.upperCorner.getZ()),
+                    new Location(getWorld(),
+                            loadData.lowerCorner.getX(),
+                            loadData.upperCorner.getY(),
+                            loadData.lowerCorner.getZ()),
+                    loadData.upperCorner
+            };
+        else if (lowerCorner != null)
+            ret = new Location[]{
+                    lowerCorner,
+                    new Location(getWorld(),
+                            lowerCorner.getX(),
+                            lowerCorner.getY(),
+                            upperCorner.getZ()),
+                    new Location(getWorld(),
+                            upperCorner.getX(),
+                            lowerCorner.getY(),
+                            lowerCorner.getZ()),
+                    new Location(getWorld(),
+                            upperCorner.getX(),
+                            lowerCorner.getY(),
+                            upperCorner.getZ()),
+                    new Location(getWorld(),
+                            lowerCorner.getX(),
+                            upperCorner.getY(),
+                            lowerCorner.getZ()),
+                    upperCorner
+            };
+        lock.unlock();
+        return ret;
+    }
+
+    @Override
+    public boolean isInRegion(Location location) {
+        boolean ret = false;
+        if (!lock.tryLock())
+            throw new AsyncExecption("Async operation still running on this region", this);
+        if (loadData != null && loadData.getStatus().getValue() > LoadData.Status.LOADING.getValue()) {
+
+            int dx = location.getBlockX() - loadData.lowerCorner.getBlockX();
+            int dy = location.getBlockY() - loadData.lowerCorner.getBlockY();
+            int dz = location.getBlockZ() - loadData.lowerCorner.getBlockZ();
+
+            ret = dx >= 0 && dx < loadData.getX_size() && dy >= 0 && dy < loadData.getY_size() && dz >= 0 && dz < loadData.getZ_size();
+        }
+        lock.unlock();
+        return ret;
+    }
+
+    @Override
+    public boolean isValidLocation(Location location) {
+        boolean ret = false;
+        if (!isInRegion(location))
+            return false;
+        if (!lock.tryLock())
+            throw new AsyncExecption("Async operation still running on this region", this);
+        if (loadData != null && loadData.getStatus().getValue() > LoadData.Status.LOADING.getValue()) {
+            Location actual_loc = new Location(location.getWorld(), location.getBlockX(), location.getBlockY(), location.getBlockZ()).add(0.5, 0.5, 0.5);
+            Node node = loadData.getNode(actual_loc);
+            ret = node != null;
+        }
+        lock.unlock();
+        return ret;
+    }
+
+    @Override
+    public void delete() {
+        sourceCache.invalidateAll();
+    }
+
+    @Override
+    public boolean isReachableLocation(Location location) {
+        boolean ret = false;
+        if (!isInRegion(location))
+            return false;
+        if (!isValidLocation(location))
+            return false;
+        if (!lock.tryLock())
+            throw new AsyncExecption("Async operation still running on this region", this);
+        if (loadData != null && loadData.getStatus().getValue() > LoadData.Status.EVALUATING.getValue()) {
+            Location actual_loc = new Location(location.getWorld(), location.getBlockX(), location.getBlockY(), location.getBlockZ()).add(0.5, 0.5, 0.5);
+            Node node = loadData.getNode(actual_loc);
+            ret = loadData.getReachableGraph().containsVertex(node);
+        }
+        lock.unlock();
+        return ret;
+    }
+
+    @Override
+    public Entity setEntity(Entity entity) {
+        return this.entity = entity;
+    }
+
+    //LOCAL METHODS
+
+    @Override
+    public Entity getEntity() {
+        return this.entity;
+    }
+
+    @Override
     public Path _getPath(Location start, Location end) {
         Location actual_s = new Location(start.getWorld(), start.getBlockX(), start.getBlockY(), start.getBlockZ()).add(0.5, 0.5, 0.5);
         Location actual_e = new Location(end.getWorld(), end.getBlockX(), end.getBlockY(), end.getBlockZ()).add(0.5, 0.5, 0.5);
 
         Node sNode = loadData.getNode(actual_s);
         Node eNode = loadData.getNode(actual_e);
-        GraphPath<Node,Edge> path = null;
+        GraphPath<Node, Edge> path = null;
 
         try {
             path = getNodeEdgeGraphPath(sNode, eNode);
         } catch (Exception ignored) {
         }
 
-        return (path!=null)?new Path(path.getVertexList().stream().map(Node::getLoc).collect(Collectors.toList()),path.getWeight()):null;
+        return (path != null) ? new Path(path.getVertexList().stream().map(Node::getLoc).collect(Collectors.toList()), path.getWeight()) : null;
     }
 
     @Override
@@ -247,18 +301,18 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
                     Node sNode = loadData.getNode(actual_s);
                     Node eNode = loadData.getNode(actual_e);
-                    GraphPath<Node,Edge> path;
+                    GraphPath<Node, Edge> path;
 
                     status.setStatus(2);
 
                     path = getNodeEdgeGraphPath(sNode, eNode);
 
                     status.totTime = (System.currentTimeMillis() - tic);
-                    status.setProduct((path!=null)?new Path(path.getVertexList().stream().map(Node::getLoc).collect(Collectors.toList()),path.getWeight()):null);
+                    status.setProduct((path != null) ? new Path(path.getVertexList().stream().map(Node::getLoc).collect(Collectors.toList()), path.getWeight()) : null);
 
                     long toc = System.currentTimeMillis();
                     Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> {
-                        Logger.info(((path!=null) ? "Found path" : "Failed pathfinding") + " in region: " + getName());
+                        Logger.info(((path != null) ? "Found path" : "Failed pathfinding") + " in region: " + getName());
                         Logger.fine("Took: " + (toc - tic) + " ms");
                     });
                 } else {
@@ -277,58 +331,6 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
         return status;
     }
 
-    private GraphPath<Node, Edge> getNodeEdgeGraphPath(Node sNode, Node eNode) {
-        GraphPath<Node, Edge> path;
-        ShortestPathAlgorithm.SingleSourcePaths<Node, Edge> iPaths;
-        iPaths = sourceCache.getIfPresent(sNode);
-        if(iPaths==null) {
-            iPaths = loadData.getShortestPath().getPaths(sNode);
-            sourceCache.put(sNode,iPaths);
-        }
-        path = iPaths.getPath(eNode);
-        return path;
-    }
-
-    @Override
-    public void delete() {
-        sourceCache.invalidateAll();
-    }
-
-    @Override
-    public Location getSamplePoint() {
-        return (loadData == null) ? null : this.loadData.samplePoint;
-    }
-
-    @Override
-    public Entity setEntity(Entity entity) {
-        return this.entity = entity;
-    }
-
-    //LOCAL METHODS
-
-    @Override
-    public Entity getEntity() {
-        return this.entity;
-    }
-
-    @Override
-    public Status<Location[]> load() {
-        StatusImpl<Location[]> ret = new StatusImpl<>();
-        if (loadData != null)
-            loader.load(loadData, ret);
-        sourceCache.invalidateAll();
-        return ret;
-    }
-
-    @Override
-    public Status<Location> evaluate() {
-        StatusImpl<Location> ret = new StatusImpl<>();
-        if (loadData != null)
-            loader.evaluate(loadData, ret);
-        sourceCache.invalidateAll();
-        return ret;
-    }
-
     @Override
     public Status<Boolean> validate() {
         StatusImpl<Boolean> ret = new StatusImpl<>();
@@ -338,29 +340,89 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
         return ret;
     }
 
+    private GraphPath<Node, Edge> getNodeEdgeGraphPath(Node sNode, Node eNode) {
+        GraphPath<Node, Edge> path;
+        ShortestPathAlgorithm.SingleSourcePaths<Node, Edge> iPaths;
+        iPaths = sourceCache.getIfPresent(sNode);
+        if (iPaths == null) {
+            iPaths = loadData.getShortestPath().getPaths(sNode);
+            sourceCache.put(sNode, iPaths);
+        }
+        path = iPaths.getPath(eNode);
+        return path;
+    }
+
     @Override
-    public Status<Location[]> setCorners(Location c1, Location c2) {
+    public Location getSamplePoint() {
+        return (loadData == null) ? samplepoint : ((loadData.getStatus().getValue() > LoadData.Status.EVALUATING.getValue()) ? this.loadData.samplePoint : samplepoint);
+    }
+
+    @Override
+    public Status<Location[]> load() {
+        StatusImpl<Location[]> ret = new StatusImpl<>();
+        if (loadData != null && loadData.lowerCorner == lowerCorner && loadData.upperCorner == upperCorner) {
+            loader.load(loadData, ret);
+        } else {
+            loadData = new LoadData(this, upperCorner, lowerCorner);
+            loader.load(loadData, ret);
+        }
+        sourceCache.invalidateAll();
+        return ret;
+    }
+
+    @Override
+    public Status<Location> evaluate() {
+        StatusImpl<Location> ret = new StatusImpl<>();
+        if (loadData != null) {
+            if (!getValidLocations().contains(samplepoint)) {
+                ret.ex = new RegionException("samplepoint is not in the region", this);
+                ret.setStatus(4);
+                return ret;
+            }
+            loadData.samplePoint = samplepoint;
+            loader.evaluate(loadData, ret);
+            sourceCache.invalidateAll();
+        }
+        return ret;
+    }
+
+    @Override
+    public Location[] setCorners(Location c1, Location c2) {
         if (c1.getWorld() == c2.getWorld()) {
             Location actual_c1 = new Location(c1.getWorld(), c1.getBlockX(), c1.getBlockY(), c1.getBlockZ()).add(0.5, 0.5, 0.5);
             Location actual_c2 = new Location(c2.getWorld(), c2.getBlockX(), c2.getBlockY(), c2.getBlockZ()).add(0.5, 0.5, 0.5);
-            Location lowerCorner = new Location(actual_c1.getWorld(), Math.min(actual_c1.getX(), actual_c2.getX()), Math.min(actual_c1.getY(), actual_c2.getY()), Math.min(actual_c1.getZ(), actual_c2.getZ()));
-            Location upperCorner = new Location(actual_c1.getWorld(), Math.max(actual_c1.getX(), actual_c2.getX()), Math.max(actual_c1.getY(), actual_c2.getY()), Math.max(actual_c1.getZ(), actual_c2.getZ()));
-            loadData = new LoadData(this, upperCorner, lowerCorner);
-            return load();
+            lowerCorner = new Location(actual_c1.getWorld(), Math.min(actual_c1.getX(), actual_c2.getX()), Math.min(actual_c1.getY(), actual_c2.getY()), Math.min(actual_c1.getZ(), actual_c2.getZ()));
+            upperCorner = new Location(actual_c1.getWorld(), Math.max(actual_c1.getX(), actual_c2.getX()), Math.max(actual_c1.getY(), actual_c2.getY()), Math.max(actual_c1.getZ(), actual_c2.getZ()));
+            return new Location[]{lowerCorner, upperCorner};
         }
         return null;
     }
 
     @Override
-    public Status<Location> setSamplePoint(Location sa) {
+    public Location setSamplePoint(Location sa) {
         if (loadData != null)
             if (sa.getWorld() == loadData.upperCorner.getWorld()) {
-                Location actual_sa = new Location(sa.getWorld(), sa.getBlockX(), sa.getBlockY(), sa.getBlockZ()).add(0.5, 0.5, 0.5);
-                if (getValidLocations().contains(actual_sa)) {
-                    loadData.samplePoint = actual_sa;
-                    return evaluate();
-                }
+                samplepoint = new Location(sa.getWorld(), sa.getBlockX(), sa.getBlockY(), sa.getBlockZ()).add(0.5, 0.5, 0.5);
+                return samplepoint;
             }
         return null;
+    }
+
+    @Override
+    public void invalidate() {
+        loadData.invalidate();
+        for (WeakReference<RegionImpl> reference :
+                backreferences) {
+            RegionImpl region = reference.get();
+            if (region == null)
+                backreferences.remove(reference);
+            else
+                region.invalidate();
+        }
+    }
+
+    @Override
+    public void referencer(RegionImpl region) {
+        backreferences.add(new WeakReference<>(region));
     }
 }

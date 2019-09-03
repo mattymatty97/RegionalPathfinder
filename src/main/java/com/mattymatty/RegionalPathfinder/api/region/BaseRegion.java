@@ -5,10 +5,10 @@ import org.bukkit.Location;
 
 public interface BaseRegion extends Region {
 
-    Status<Location[]> setCorners(Location c1, Location c2);
+    Location[] setCorners(Location c1, Location c2);
 
 
-    Status<Location> setSamplePoint(Location sa);
+    Location setSamplePoint(Location sa);
 
     Location getSamplePoint();
 

@@ -25,7 +25,7 @@ public class TabComplete implements TabCompleter {
             switch (args[0].toLowerCase()) {
                 case "create":
                     if (args.length == 2)
-                        return Stream.of("base"/*,"extended"*/).filter(s -> s.startsWith(args[1])).collect(Collectors.toList());
+                        return Stream.of("base", "extended").filter(s -> s.startsWith(args[1])).collect(Collectors.toList());
                     else
                         return null;
 
@@ -38,7 +38,7 @@ public class TabComplete implements TabCompleter {
                 default:
                     Region region = RegionalPathfinder.getInstance().getRegion(args[0]);
                     if (region != null)
-                        if (region.getLevel() == 1)
+                        if (region.getLevel() == 1) {
                             if (args.length == 2)
                                 return Stream.of("set", "validate", "path", "validLoc", "reachableLoc").filter(s -> s.startsWith(args[1])).collect(Collectors.toList());
                             else if (args[1].equalsIgnoreCase("set"))
@@ -46,6 +46,13 @@ public class TabComplete implements TabCompleter {
                                     return Stream.of("corners", "samplepoint").filter(s -> s.startsWith(args[2])).collect(Collectors.toList());
                                 else
                                     return null;
+                        } else {
+                            if (args.length == 2)
+                                return Stream.of("add", "remove", "validate", "path", "validLoc", "reachableLoc", "intersection").filter(s -> s.startsWith(args[1])).collect(Collectors.toList());
+                            else if (args[1].equalsIgnoreCase("add") || args[1].equalsIgnoreCase("remove")) {
+                                return Arrays.stream(RegionalPathfinder.getInstance().getRegions()).filter(r -> r != region).map(Region::getName).filter(s -> s.startsWith(args[2])).collect(Collectors.toList());
+                            }
+                        }
             }
         } catch (Exception ignored) {
         }

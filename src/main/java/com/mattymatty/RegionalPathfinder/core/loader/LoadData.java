@@ -95,4 +95,9 @@ public class LoadData {
             return value;
         }
     }
+
+    public void invalidate() {
+        if (status == Status.VALIDATED)
+            status = Status.EVALUATED;
+    }
 }

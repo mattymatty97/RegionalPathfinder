@@ -19,6 +19,8 @@ public interface RegionImpl extends Region {
     static Region createRegion(String name, RegionType type) {
         if (type == RegionType.BASE)
             return new BaseRegionImpl(name);
+        if (type == RegionType.EXTENDED)
+            return new ExtendedRegionImpl(name);
         return null;
     }
 
@@ -33,4 +35,8 @@ public interface RegionImpl extends Region {
 
     //a cancellation method
     void delete();
+
+    void invalidate();
+
+    void referencer(RegionImpl region);
 }

@@ -8,6 +8,7 @@ import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.core.StatusImpl;
 import com.mattymatty.RegionalPathfinder.core.graph.Edge;
 import com.mattymatty.RegionalPathfinder.core.graph.Node;
+import com.mattymatty.RegionalPathfinder.exeptions.AsyncExecption;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -19,6 +20,7 @@ import org.jgrapht.alg.interfaces.StrongConnectivityAlgorithm;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.builder.GraphTypeBuilder;
 
+import java.lang.ref.WeakReference;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -27,67 +29,64 @@ import java.util.stream.Stream;
 
 public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
+    public static boolean sync = true;
+
     private final int id;
 
     private final String name;
 
-    Map<RegionImpl, RegionWrapper> regions = new HashMap<RegionImpl, RegionWrapper>();
+    private Map<RegionImpl, RegionWrapper> regions = new HashMap<RegionImpl, RegionWrapper>();
 
-    Map<Node, Integer> waypointMap = new HashMap<>();
+    private Map<Node, Integer> waypointMap = new HashMap<>();
 
-    Graph<Node, Edge> graph = GraphTypeBuilder.<Node, Edge>directed().edgeClass(Edge.class).weighted(true).buildGraph();
+    private Graph<Node, Edge> graph = GraphTypeBuilder.<Node, Edge>directed().edgeClass(Edge.class).weighted(true).buildGraph();
 
     private Lock lock = new ReentrantLock();
 
     private boolean valid = false;
 
+    private final ShortestPathAlgorithm<Node, Edge> spa = new DijkstraShortestPath<>(graph);
+    private List<WeakReference<RegionImpl>> backreferences = new LinkedList<>();
+
     @Override
     public Status<Region[]> addRegion(Region region) {
-
+        if (regions.containsKey(region))
+            return null;
         long tic = System.currentTimeMillis();
         StatusImpl<Region[]> status = new StatusImpl<>();
         RegionImpl reg = (RegionImpl) region;
-        Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(), () -> {
+        if (sync) {
             boolean locked = false;
             try {
                 status.setStatus(1);
-                lock.lockInterruptibly();
+                if (lock.tryLock())
+                    throw new AsyncExecption("Async operation still running on this region", this);
                 locked = true;
-                status.setStatus(2);
-
-                RegionWrapper rw = new RegionWrapper();
-                rw.region = region;
-
-                int size = regions.size();
-                int i = 0;
-                for (RegionImpl act : regions.keySet()) {
-                    i++;
-                    RegionWrapper actwr = regions.get(act);
-                    List<Node> waypoints = act.getIntersection(reg).stream().map(Node::new).peek(n -> {
-                        makeEdges(act, actwr, n);
-                        makeEdges(act, rw, n);
-                    }).collect(Collectors.toList());
-                    addWaypoints(actwr, waypoints);
-                    addWaypoints(rw, waypoints);
-                    status.percentage = (float) i / size;
-                    status.setStatus(2);
-                }
-
-                regions.put(reg, rw);
-
-                status.setProduct(regions.keySet().toArray(new Region[]{}));
-                status.totTime = (System.currentTimeMillis() - tic);
-                status.setStatus(3);
-
+                _addRegion(tic, status, reg);
                 lock.unlock();
-
             } catch (Exception ex) {
                 status.ex = ex;
                 status.setStatus(4);
                 if (locked)
                     lock.unlock();
             }
-        });
+        } else {
+            Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(), () -> {
+                boolean locked = false;
+                try {
+                    status.setStatus(1);
+                    lock.lockInterruptibly();
+                    locked = true;
+                    _addRegion(tic, status, reg);
+                    lock.unlock();
+                } catch (Exception ex) {
+                    status.ex = ex;
+                    status.setStatus(4);
+                    if (locked)
+                        lock.unlock();
+                }
+            });
+        }
         return status;
     }
 
@@ -100,17 +99,66 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         }).collect(Collectors.toList()));
     }
 
-    private void makeEdges(RegionImpl act, RegionWrapper actwr, Node n) {
-        if (!actwr.waypoints.contains(n)) {
+    private void _addRegion(long tic, StatusImpl<Region[]> status, RegionImpl reg) {
+        status.setStatus(2);
+
+        RegionWrapper rw = new RegionWrapper();
+        rw.region = reg;
+
+        int size = regions.size();
+        int i = 0;
+        for (RegionImpl act : regions.keySet()) {
+            i++;
+            RegionWrapper actrw = regions.get(act);
+            List<Node> waypoints = act.getIntersection(reg).stream().map(Node::new).collect(Collectors.toList());
+            waypoints.forEach(w -> {
+                makeEdges(act, actrw, w);
+                makeEdges(reg, rw, w);
+            });
+            addWaypoints(actrw, waypoints);
+            addWaypoints(rw, waypoints);
+            status.percentage = (float) i / size;
+            status.setStatus(2);
+        }
+
+        regions.put(reg, rw);
+        reg.referencer(this);
+
+        status.setProduct(regions.keySet().toArray(new Region[]{}));
+        status.totTime = (System.currentTimeMillis() - tic);
+        status.setStatus(3);
+    }
+
+    private void makeEdges(RegionImpl region, RegionWrapper rw, Node n) {
+        makeEdges(region, rw, n, 0);
+    }
+
+    private void makeEdges(RegionImpl region, RegionWrapper rw, Node n, int direction) {
+        if (!rw.waypoints.contains(n)) {
             if (!graph.containsVertex(n))
                 graph.addVertex(n);
-            actwr.waypoints.forEach(w -> {
-                Path go = act._getPath(n.getLoc(), w.getLoc());
-                Path ret = act._getPath(w.getLoc(), n.getLoc());
-                Edge goE = graph.addEdge(n, w).setPath(go.getPath());
-                graph.setEdgeWeight(goE, go.getWeight());
-                Edge retE = graph.addEdge(w, n).setPath(ret.getPath());
-                graph.setEdgeWeight(retE, ret.getWeight());
+            rw.waypoints.forEach(w -> {
+                Path go = null, ret = null;
+                if (direction == 0 || direction == 1)
+                    go = region._getPath(n.getLoc(), w.getLoc());
+                if (direction == 0 || direction == 2)
+                    ret = region._getPath(w.getLoc(), n.getLoc());
+
+                if (direction == 0 || direction == 1) {
+                    Edge goE = graph.addEdge(n, w);
+                    if (goE == null)
+                        goE = graph.getEdge(n, w);
+                    goE.setPath(go.getPath());
+                    graph.setEdgeWeight(goE, go.getWeight());
+                }
+
+                if (direction == 0 || direction == 2) {
+                    Edge retE = graph.addEdge(w, n);
+                    if (retE == null)
+                        retE = graph.getEdge(w, n);
+                    retE.setPath(ret.getPath());
+                    graph.setEdgeWeight(retE, ret.getWeight());
+                }
             });
         }
     }
@@ -120,98 +168,71 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         long tic = System.currentTimeMillis();
         StatusImpl<Region[]> status = new StatusImpl<>();
         RegionImpl reg = (RegionImpl) region;
-        Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(), () -> {
+        if (sync) {
             boolean locked = false;
             try {
                 status.setStatus(1);
-                lock.lockInterruptibly();
+                if (lock.tryLock())
+                    throw new AsyncExecption("Async operation still running on this region", this);
                 locked = true;
-                status.setStatus(2);
-
-                RegionWrapper rw = regions.get(reg);
-                regions.remove(reg);
-                if (reg != null) {
-
-                    int size = rw.waypoints.size();
-                    int i = 0;
-                    for (Node waypoint :
-                            rw.waypoints) {
-                        i++;
-                        Integer count = waypointMap.getOrDefault(waypoint,null);
-                        if(--count<2){
-                            graph.removeVertex(waypoint);
-                            waypointMap.remove(waypoint);
-                        }else{
-                            waypointMap.put(waypoint,count);
-                            rw.waypoints.forEach(w->graph.removeEdge(waypoint,w));
-                        }
-                        status.percentage = (float) i / size;
-                        status.setStatus(2);
-                    }
-
-                    regions.put(reg, rw);
-
-                }
-                status.setProduct(regions.keySet().toArray(new Region[]{}));
-                status.totTime = (System.currentTimeMillis() - tic);
-                status.setStatus(3);
-
+                _removeRegion(tic, status, reg);
                 lock.unlock();
-
             } catch (Exception ex) {
                 status.ex = ex;
                 status.setStatus(4);
                 if (locked)
                     lock.unlock();
             }
-        });
+        } else
+            Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(), () -> {
+                boolean locked = false;
+                try {
+                    status.setStatus(1);
+                    lock.lockInterruptibly();
+                    locked = true;
+                    _removeRegion(tic, status, reg);
+                    lock.unlock();
+
+                } catch (Exception ex) {
+                    status.ex = ex;
+                    status.setStatus(4);
+                    if (locked)
+                        lock.unlock();
+                }
+            });
         return status;
     }
 
-    @Override
-    public Path _getPath(Location start, Location end) {
+    private void _removeRegion(long tic, StatusImpl<Region[]> status, RegionImpl reg) {
+        status.setStatus(2);
 
-        lock.lock();
-        RegionImpl sreg = regions.keySet().stream().filter(r -> isReachableLocation(start)).findFirst().get();
-        RegionImpl ereg = regions.keySet().stream().filter(r -> isReachableLocation(end)).findFirst().get();
+        RegionWrapper rw = regions.get(reg);
+        regions.remove(reg);
+        if (rw != null) {
 
-        if (sreg == ereg)
-            return sreg._getPath(start, end);
+            int size = rw.waypoints.size();
+            int i = 0;
+            for (Node waypoint :
+                    rw.waypoints) {
+                i++;
+                Integer count = waypointMap.getOrDefault(waypoint, null);
+                if (--count < 2) {
+                    graph.removeVertex(waypoint);
+                    waypointMap.remove(waypoint);
+                } else {
+                    waypointMap.put(waypoint, count);
+                    rw.waypoints.forEach(w -> graph.removeEdge(waypoint, w));
+                }
+                status.percentage = (float) i / size;
+                status.setStatus(2);
+            }
 
-        RegionWrapper swr = regions.get(sreg);
-        RegionWrapper ewr = regions.get(ereg);
+            regions.put(reg, rw);
 
-        Node snode = new Node(start);
-        Node enode = new Node(end);
-
-        boolean sadded = false;
-        boolean eadded = false;
-
-        if (!swr.waypoints.contains(snode)) {
-            makeEdges(sreg, swr, snode);
-            sadded = true;
         }
-
-        if (!ewr.waypoints.contains(enode)) {
-            makeEdges(ereg, ewr, enode);
-            eadded = true;
-        }
-
-        ShortestPathAlgorithm<Node, Edge> spa = new DijkstraShortestPath<>(graph);
-
-        GraphPath<Node, Edge> path = spa.getPath(snode, enode);
-
-        Stream<Location> locationStream = path.getEdgeList().stream().map(Edge::getPath).flatMap(l -> l.stream().skip(1));
-
-        Path ret = new Path(Stream.concat(Stream.of(start), locationStream).collect(Collectors.toList()), path.getWeight());
-
-        if (sadded)
-            graph.removeVertex(snode);
-        if (eadded)
-            graph.removeVertex(enode);
-
-        lock.unlock();
-        return ret;
+        status.setProduct(regions.keySet().toArray(new Region[]{}));
+        status.totTime = (System.currentTimeMillis() - tic);
+        status.setStatus(3);
     }
 
     @Override
@@ -230,8 +251,47 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     }
 
     @Override
-    public int getLevel() {
-        return regions.keySet().stream().mapToInt(Region::getLevel).max().orElse(0);
+    public Path _getPath(Location start, Location end) {
+
+        lock.lock();
+        RegionImpl sreg = regions.keySet().stream().sorted(Comparator.comparing(Region::getLevel)).filter(r -> r.isReachableLocation(start)).findFirst().get();
+        RegionImpl ereg = regions.keySet().stream().sorted(Comparator.comparing(Region::getLevel)).filter(r -> r.isReachableLocation(end)).findFirst().get();
+
+        if (sreg == ereg)
+            return sreg._getPath(start, end);
+
+        RegionWrapper swr = regions.get(sreg);
+        RegionWrapper ewr = regions.get(ereg);
+
+        Node snode = new Node(start);
+        Node enode = new Node(end);
+
+        boolean sadded = false;
+        boolean eadded = false;
+
+        if (!swr.waypoints.contains(snode)) {
+            makeEdges(sreg, swr, snode, 1);
+            sadded = true;
+        }
+
+        if (!ewr.waypoints.contains(enode)) {
+            makeEdges(ereg, ewr, enode, 2);
+            eadded = true;
+        }
+
+        GraphPath<Node, Edge> path = spa.getPath(snode, enode);
+
+        Stream<Location> locationStream = path.getEdgeList().stream().map(Edge::getPath).flatMap(l -> l.stream().skip(1));
+
+        Path ret = new Path(Stream.concat(Stream.of(start), locationStream).collect(Collectors.toList()), path.getWeight());
+
+        if (sadded)
+            graph.removeVertex(snode);
+        if (eadded)
+            graph.removeVertex(enode);
+
+        lock.unlock();
+        return ret;
     }
 
     @Override
@@ -257,6 +317,11 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     @Override
     public List<Location> getReachableLocations() {
         return regions.keySet().stream().flatMap(r -> r.getReachableLocations().stream()).distinct().collect(Collectors.toList());
+    }
+
+    @Override
+    public int getLevel() {
+        return regions.keySet().stream().mapToInt(Region::getLevel).max().orElse(-1) + 1;
     }
 
     @Override
@@ -324,6 +389,11 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     }
 
     @Override
+    public List<Location> getIntersections() {
+        return regions.values().stream().flatMap(r -> r.waypoints.stream().map(Node::getLoc)).distinct().collect(Collectors.toList());
+    }
+
+    @Override
     public Status<Path> getPath(Location start, Location end) {
         long tic = System.currentTimeMillis();
         StatusImpl<Path> status = new StatusImpl<>();
@@ -336,8 +406,8 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                 locked = true;
                 status.setStatus(2);
 
-                RegionImpl sreg = regions.keySet().stream().filter(r -> isReachableLocation(start)).findFirst().orElse(null);
-                RegionImpl ereg = regions.keySet().stream().filter(r -> isReachableLocation(end)).findFirst().orElse(null);
+                RegionImpl sreg = regions.keySet().stream().sorted(Comparator.comparing(Region::getLevel)).filter(r -> r.isReachableLocation(start)).findFirst().orElse(null);
+                RegionImpl ereg = regions.keySet().stream().sorted(Comparator.comparing(Region::getLevel)).filter(r -> r.isReachableLocation(end)).findFirst().orElse(null);
 
                 if (sreg == null || ereg == null) {
                     status.totTime = (System.currentTimeMillis() - tic);
@@ -370,7 +440,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                 status.setStatus(2);
 
                 if (!swr.waypoints.contains(snode)) {
-                    makeEdges(sreg, swr, snode);
+                    makeEdges(sreg, swr, snode, 1);
                     sadded = true;
                 }
 
@@ -379,7 +449,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                 status.setStatus(2);
 
                 if (!ewr.waypoints.contains(enode)) {
-                    makeEdges(ereg, ewr, enode);
+                    makeEdges(ereg, ewr, enode, 2);
                     eadded = true;
                 }
 
@@ -412,6 +482,24 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
             }
         });
         return status;
+    }
+
+    @Override
+    public void invalidate() {
+        this.valid = false;
+        for (WeakReference<RegionImpl> reference :
+                backreferences) {
+            RegionImpl region = reference.get();
+            if (region == null)
+                backreferences.remove(reference);
+            else
+                region.invalidate();
+        }
+    }
+
+    @Override
+    public void referencer(RegionImpl region) {
+        backreferences.add(new WeakReference<>(region));
     }
 
     private static class RegionWrapper {
