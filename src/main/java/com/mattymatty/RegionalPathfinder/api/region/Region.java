@@ -17,7 +17,7 @@ public interface Region {
 
     String getName();
 
-    //from lvl 1 ( block driven pathfinding ) to higher levels
+    //from lvl 1 ( block driven pathFinding ) to higher levels
     int getLevel();
 
     //the world this region is into
@@ -30,30 +30,49 @@ public interface Region {
     List<Location> getValidLocations();
 
     //a getter for all the locations where the entity can stand near a point
+
+    /**
+     * //  NOT YET IMPLEMENTED
+     **/
     List<Location> getValidLocations(Location center, int radius);
 
-    //a getter for all the locations where the entity can stand
+    //a getter for all the locations where the entity can walk to
     List<Location> getReachableLocations();
 
     //a getter for all the locations where the entity can stand near a point
+
+    /**
+     * //  NOT YET IMPLEMENTED
+     **/
     List<Location> getReachableLocations(Location center, int radius);
 
+
+    //tester if a location is inside the definition zone (lowerCorner,highCorner)
     boolean isInRegion(Location location);
+
+    //tester if a location is where the entity can stand
     boolean isValidLocation(Location location);
+
+
+    //tester if a location is where the entity can walk to
     boolean isReachableLocation(Location location);
 
     //setter methods for entity
     Entity setEntity(Entity entity);
 
-    Entity getEntity();
 
+    //getter method for entity
+    Entity getEntity();
 
     //if this region is ready to be used
     boolean isValid();
 
+    //validation command for the current region
     Status<Boolean> validate();
 
+    //pathfind command for the current region
     Status<Path> getPath(Location start, Location end);
+
 
     default BaseRegion asBaseRegion(){
         return (this instanceof BaseRegion)?(BaseRegion)this:null;

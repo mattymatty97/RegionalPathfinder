@@ -5,17 +5,16 @@ import org.bukkit.Location;
 
 public interface BaseRegion extends Region {
 
+    //set the corners of a cubic sized zone containing the region
     Location[] setCorners(Location c1, Location c2);
 
-
+    //set the point used as sample to prune unreachable locations
     Location setSamplePoint(Location sa);
 
-    Location getSamplePoint();
-
-    //a method to redo all the loading,evaluating and verifing
+    //load the cubic zone extracting all the valid regions ( based on current Entity )
     Status<Location[]> load();
 
+    //prune all unreachable locations using as start point the "samplePoint"
     Status<Location> evaluate();
-
 
 }

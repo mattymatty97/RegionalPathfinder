@@ -311,7 +311,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
     @Override
     public List<Location> getValidLocations(Location center, int radius) {
-        return null;
+        throw new RuntimeException("Not Yet implemented");
     }
 
     @Override
@@ -326,7 +326,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
     @Override
     public List<Location> getReachableLocations(Location center, int radius) {
-        return null;
+        throw new RuntimeException("Not Yet implemented");
     }
 
     @Override
@@ -364,19 +364,14 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     public Status<Boolean> validate() {
         long tic = System.currentTimeMillis();
         StatusImpl<Boolean> status = new StatusImpl<>();
-        Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(), () -> {
+        if (sync) {
             boolean locked = false;
             try {
                 status.setStatus(1);
-                lock.lockInterruptibly();
+                if (lock.tryLock())
+                    throw new AsyncExecption("Async operation still running on this region", this);
                 locked = true;
-                status.setStatus(2);
-                StrongConnectivityAlgorithm<Node, Edge> scAlg =
-                        new KosarajuStrongConnectivityInspector<>(graph);
-                status.setProduct(scAlg.isStronglyConnected());
-                valid = status.getProduct();
-                status.totTime = (System.currentTimeMillis() - tic);
-                status.setStatus(3);
+                _validate(tic, status);
                 lock.unlock();
             } catch (Exception ex) {
                 status.ex = ex;
@@ -384,8 +379,43 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                 if (locked)
                     lock.unlock();
             }
-        });
+        } else
+            Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(), () -> {
+                boolean locked = false;
+                try {
+                    status.setStatus(1);
+                    lock.lockInterruptibly();
+                    locked = true;
+                    _validate(tic, status);
+                    lock.unlock();
+                } catch (Exception ex) {
+                    status.ex = ex;
+                    status.setStatus(4);
+                    if (locked)
+                        lock.unlock();
+                }
+            });
         return status;
+    }
+
+    private void _validate(long tic, StatusImpl<Boolean> status) {
+        status.setStatus(2);
+        if (ESubRegions().anyMatch(r -> r == this)) {
+            status.setProduct(false);
+            status.totTime = (System.currentTimeMillis() - tic);
+            status.setStatus(3);
+            return;
+        }
+        StrongConnectivityAlgorithm<Node, Edge> scAlg =
+                new KosarajuStrongConnectivityInspector<>(graph);
+        status.setProduct(scAlg.isStronglyConnected());
+        valid = status.getProduct();
+        status.totTime = (System.currentTimeMillis() - tic);
+        status.setStatus(3);
+    }
+
+    private Stream<ExtendedRegion> ESubRegions() {
+        return regions.keySet().stream().map(Region::asExtendedRegion).filter(Objects::nonNull).map(r -> (ExtendedRegionImpl) r).flatMap(ExtendedRegionImpl::ESubRegions);
     }
 
     @Override

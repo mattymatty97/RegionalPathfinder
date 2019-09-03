@@ -87,7 +87,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     @Override
     public List<Location> getValidLocations(Location center, int radius) {
-        return null;
+        throw new RuntimeException("Not Yet implemented");
     }
 
     @Override
@@ -101,7 +101,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     @Override
     public List<Location> getReachableLocations(Location center, int radius) {
-        return null;
+        throw new RuntimeException("Not Yet implemented");
     }
 
     private Location upperCorner;
@@ -350,11 +350,6 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
         }
         path = iPaths.getPath(eNode);
         return path;
-    }
-
-    @Override
-    public Location getSamplePoint() {
-        return (loadData == null) ? samplepoint : ((loadData.getStatus().getValue() > LoadData.Status.EVALUATING.getValue()) ? this.loadData.samplePoint : samplepoint);
     }
 
     @Override

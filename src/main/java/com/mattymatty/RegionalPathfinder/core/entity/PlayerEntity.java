@@ -11,6 +11,7 @@ import org.bukkit.block.data.type.Stairs;
 import org.bukkit.block.data.type.TrapDoor;
 import org.bukkit.util.Vector;
 
+import javax.validation.constraints.PositiveOrZero;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -51,27 +52,31 @@ public class PlayerEntity implements Entity {
 
     @Override
     public boolean isValidLocation(Location loc) {
-        Block block = loc.getBlock();
-        if (!(
-                block.isPassable() ||
-                        (block.getBlockData() instanceof Door) ||
-                        (block.getBlockData() instanceof TrapDoor)
-        ))
-            return false;
-
-        block = cloneLoc(loc).add(0, 1, 0).getBlock();
-        if (!(
-                block.isPassable() ||
-                        (block.getBlockData() instanceof Door) ||
-                        (block.getBlockData() instanceof TrapDoor)
-        ))
-            return false;
+        if (isValidFlyLocation(loc)) return false;
+        Block block;
 
         block = cloneLoc(loc).add(0, -1, 0).getBlock();
         return (
                 !block.isPassable() &&
                         (!(block.getBlockData() instanceof Door)) &&
                         (!(block.getBlockData() instanceof TrapDoor))
+        );
+    }
+
+    private boolean isValidFlyLocation(Location loc) {
+        Block block = loc.getBlock();
+        if (!(
+                block.isPassable() ||
+                        (block.getBlockData() instanceof Door) ||
+                        (block.getBlockData() instanceof TrapDoor)
+        ))
+            return true;
+
+        block = cloneLoc(loc).add(0, 1, 0).getBlock();
+        return !(
+                block.isPassable() ||
+                        (block.getBlockData() instanceof Door) ||
+                        (block.getBlockData() instanceof TrapDoor)
         );
     }
 
@@ -102,9 +107,10 @@ public class PlayerEntity implements Entity {
         Location t3 = new Location(start.getWorld(), Math.max(start.getBlockX(), end.getBlockX()), start.getBlockY(), Math.min(start.getBlockZ(), end.getBlockZ()));
         Location t4 = new Location(start.getWorld(), Math.min(start.getBlockX(), end.getBlockX()), start.getBlockY(), Math.max(start.getBlockZ(), end.getBlockZ()));
 
-        return isValidLocation(t1) && isValidLocation(t2) && isValidLocation(t3) && isValidLocation(t4);
+        return isValidFlyLocation(t1) && isValidFlyLocation(t2) && isValidFlyLocation(t3) && isValidFlyLocation(t4);
     }
 
+    @PositiveOrZero
     @Override
     public double movementCost(Location start, Location end) {
         return cost(movementCost, cloneLoc(start).add(0, -1, 0), cloneLoc(end).add(0, -1, 0));
@@ -207,8 +213,8 @@ public class PlayerEntity implements Entity {
         public MovementCost() {
             this.defaultMovement = 1;
             this.diagonalAddition = 0.5;
-            this.jump = 3;
-            this.stair_slab = 2;
+            this.jump = 5;
+            this.stair_slab = 3;
             this.blockCosts = new HashMap<>();
             blockCosts.put("minecraft:soul_sand", 7.0);
             blockCosts.put("minecraft:grass_block", 5.0);
