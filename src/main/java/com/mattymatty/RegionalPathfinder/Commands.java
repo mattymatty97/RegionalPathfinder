@@ -58,7 +58,7 @@ public class Commands implements CommandExecutor {
                             switch (args[1].toLowerCase()) {
                                 case "delete":
                                     plugin.removeRegion(region);
-                                    break;
+                                    return true;
 
                                 case "set": {
                                     if (args.length == 3) {
@@ -275,6 +275,8 @@ public class Commands implements CommandExecutor {
                                     return true;
                                 }
                                 case "add": {
+                                    if (args.length < 3)
+                                        return false;
                                     Region toAdd = RegionalPathfinder.getInstance().getRegion(args[2]);
                                     if (toAdd == null) {
                                         sender.sendMessage("Region not found");
@@ -299,6 +301,8 @@ public class Commands implements CommandExecutor {
                                     return true;
                                 }
                                 case "remove": {
+                                    if (args.length < 3)
+                                        return false;
                                     Region toRemove = RegionalPathfinder.getInstance().getRegion(args[2]);
                                     if (toRemove == null) {
                                         sender.sendMessage("Region not found");

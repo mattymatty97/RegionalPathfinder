@@ -40,7 +40,7 @@ public class TabComplete implements TabCompleter {
                     if (region != null)
                         if (region.getLevel() == 1) {
                             if (args.length == 2)
-                                return Stream.of("set", "validate", "path", "validLoc", "reachableLoc").filter(s -> s.startsWith(args[1])).collect(Collectors.toList());
+                                return Stream.of("delete", "set", "validate", "path", "validLoc", "reachableLoc").filter(s -> s.startsWith(args[1])).collect(Collectors.toList());
                             else if (args[1].equalsIgnoreCase("set"))
                                 if (args.length == 3)
                                     return Stream.of("corners", "samplepoint").filter(s -> s.startsWith(args[2])).collect(Collectors.toList());
@@ -48,7 +48,7 @@ public class TabComplete implements TabCompleter {
                                     return null;
                         } else {
                             if (args.length == 2)
-                                return Stream.of("add", "remove", "validate", "path", "validLoc", "reachableLoc", "intersection").filter(s -> s.startsWith(args[1])).collect(Collectors.toList());
+                                return Stream.of("delete", "add", "remove", "validate", "path", "validLoc", "reachableLoc", "intersection").filter(s -> s.startsWith(args[1])).collect(Collectors.toList());
                             else if (args[1].equalsIgnoreCase("add") || args[1].equalsIgnoreCase("remove")) {
                                 return Arrays.stream(RegionalPathfinder.getInstance().getRegions()).filter(r -> r != region).map(Region::getName).filter(s -> s.startsWith(args[2])).collect(Collectors.toList());
                             }
