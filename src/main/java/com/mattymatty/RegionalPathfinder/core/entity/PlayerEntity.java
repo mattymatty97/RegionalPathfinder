@@ -2,18 +2,13 @@ package com.mattymatty.RegionalPathfinder.core.entity;
 
 import com.mattymatty.RegionalPathfinder.api.entity.Entity;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.data.Bisected;
 import org.bukkit.block.data.type.Door;
-import org.bukkit.block.data.type.Slab;
-import org.bukkit.block.data.type.Stairs;
 import org.bukkit.block.data.type.TrapDoor;
 import org.bukkit.util.Vector;
 
+import javax.validation.constraints.Positive;
 import javax.validation.constraints.PositiveOrZero;
-import java.util.HashMap;
-import java.util.Map;
 
 public class PlayerEntity implements Entity {
 
@@ -110,136 +105,16 @@ public class PlayerEntity implements Entity {
         return isValidFlyLocation(t1) && isValidFlyLocation(t2) && isValidFlyLocation(t3) && isValidFlyLocation(t4);
     }
 
+    @Positive
     @PositiveOrZero
     @Override
     public double movementCost(Location start, Location end) {
         return cost(movementCost, cloneLoc(start).add(0, -1, 0), cloneLoc(end).add(0, -1, 0));
     }
 
-    private double cost(MovementCost cost, Location source, Location dest) {
-        double result = 0;
-
-        int dx = dest.getBlockX() - source.getBlockX();
-        int dy = dest.getBlockY() - source.getBlockY();
-        int dz = dest.getBlockZ() - source.getBlockZ();
-
-        if (Math.abs(dy) == 0) {
-            result += cost.getDefaultMovement();
-        } else {
-            if (isStairMovement(source, dest)) {
-                result += cost.getStair_slab();
-            } else {
-                result += cost.getJump();
-            }
-        }
-
-        if (dx != 0 && dz != 0)
-            result += cost.getDiagonalAddition();
-
-        result += cost.getBlockCost(dest.getBlock().getType());
-
-        return result;
-    }
-
-    private boolean isStairMovement(Location start, Location end) {
-        int dx = end.getBlockX() - start.getBlockX();
-        int dy = end.getBlockY() - start.getBlockY();
-        int dz = end.getBlockZ() - start.getBlockZ();
-        Block block;
-        if (dy == 1) {
-            block = end.getBlock();
-            if (block.getBlockData() instanceof Slab)
-                return true;
-            if (block.getBlockData() instanceof Stairs) {
-                Stairs stair = (Stairs) block.getBlockData();
-                if (stair.getHalf() == Bisected.Half.TOP)
-                    return false;
-                Vector direction = stair.getFacing().getOppositeFace().getDirection();
-                if (stair.getShape() == Stairs.Shape.STRAIGHT)
-                    return direction.equals(new Vector(dx, 0, dz));
-                if (stair.getShape() == Stairs.Shape.OUTER_LEFT)
-                    return direction.equals(new Vector(dx, 0, dz)) ||
-                            direction.equals(new Vector(dx, 0, dz).rotateAroundY(-90)) ||
-                            direction.equals(new Vector(dx, 0, dz).rotateAroundY(-45));
-                if (stair.getShape() == Stairs.Shape.OUTER_RIGHT)
-                    return direction.equals(new Vector(dx, 0, dz)) ||
-                            direction.equals(new Vector(dx, 0, dz).rotateAroundY(90)) ||
-                            direction.equals(new Vector(dx, 0, dz).rotateAroundY(45));
-                if (stair.getShape() == Stairs.Shape.INNER_LEFT)
-                    return direction.equals(new Vector(dx, 0, dz).rotateAroundY(-45));
-                if (stair.getShape() == Stairs.Shape.INNER_RIGHT)
-                    return direction.equals(new Vector(dx, 0, dz).rotateAroundY(45));
-            }
-        } else if (dy == -1) {
-            block = start.getBlock();
-            if (block.getBlockData() instanceof Slab)
-                return true;
-            if (block.getBlockData() instanceof Stairs) {
-                Stairs stair = (Stairs) block.getBlockData();
-                if (stair.getHalf() == Bisected.Half.TOP)
-                    return false;
-                Vector direction = stair.getFacing().getDirection();
-                if (stair.getShape() == Stairs.Shape.STRAIGHT)
-                    return direction.equals(new Vector(dx, 0, dz));
-                if (stair.getShape() == Stairs.Shape.OUTER_LEFT)
-                    return direction.equals(new Vector(dx, 0, dz)) ||
-                            direction.equals(new Vector(dx, 0, dz).rotateAroundY(-90)) ||
-                            direction.equals(new Vector(dx, 0, dz).rotateAroundY(-45));
-                if (stair.getShape() == Stairs.Shape.OUTER_RIGHT)
-                    return direction.equals(new Vector(dx, 0, dz)) ||
-                            direction.equals(new Vector(dx, 0, dz).rotateAroundY(90)) ||
-                            direction.equals(new Vector(dx, 0, dz).rotateAroundY(45));
-                if (stair.getShape() == Stairs.Shape.INNER_LEFT)
-                    return direction.equals(new Vector(dx, 0, dz).rotateAroundY(-45));
-                if (stair.getShape() == Stairs.Shape.INNER_RIGHT)
-                    return direction.equals(new Vector(dx, 0, dz).rotateAroundY(45));
-            }
-        }
-        return false;
-    }
-
     private Location cloneLoc(Location loc) {
         return new Location(loc.getWorld(), loc.getX(), loc.getY(), loc.getZ());
     }
 
-    private class MovementCost {
 
-        private final double defaultMovement;
-        private final double diagonalAddition;
-        private final double jump;
-        private final double stair_slab;
-        private final Map<String, Double> blockCosts;
-
-        public MovementCost() {
-            this.defaultMovement = 1;
-            this.diagonalAddition = 0.5;
-            this.jump = 5;
-            this.stair_slab = 3;
-            this.blockCosts = new HashMap<>();
-            blockCosts.put("minecraft:soul_sand", 7.0);
-            blockCosts.put("minecraft:grass_block", 5.0);
-            blockCosts.put("minecraft:dirt", 5.0);
-        }
-
-        public double getDefaultMovement() {
-            return defaultMovement;
-        }
-
-        public double getDiagonalAddition() {
-            return diagonalAddition;
-        }
-
-        public double getJump() {
-            return jump;
-        }
-
-        public double getStair_slab() {
-            return stair_slab;
-        }
-
-        public double getBlockCost(Material material) {
-            return blockCosts.getOrDefault(material.getKey().toString(), 0.0);
-        }
-
-    }
 }
