@@ -20,6 +20,7 @@ import org.jgrapht.alg.interfaces.StrongConnectivityAlgorithm;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.builder.GraphTypeBuilder;
 
+import javax.validation.constraints.Positive;
 import java.lang.ref.WeakReference;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
@@ -50,6 +51,11 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
     @Override
     public Status<Region[]> addRegion(Region region) {
+        return addRegion(region, 1.0);
+    }
+
+    @Override
+    public Status<Region[]> addRegion(Region region, @Positive double weightMultiplier) {
         if (regions.containsKey(region))
             return null;
         long tic = System.currentTimeMillis();
@@ -62,7 +68,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                 if (lock.tryLock())
                     throw new AsyncExecption("Async operation still running on this region", this);
                 locked = true;
-                _addRegion(tic, status, reg);
+                _addRegion(tic, status, reg, weightMultiplier);
                 lock.unlock();
             } catch (Exception ex) {
                 status.ex = ex;
@@ -77,7 +83,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     status.setStatus(1);
                     lock.lockInterruptibly();
                     locked = true;
-                    _addRegion(tic, status, reg);
+                    _addRegion(tic, status, reg, weightMultiplier);
                     lock.unlock();
                 } catch (Exception ex) {
                     status.ex = ex;
@@ -99,11 +105,12 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         }).collect(Collectors.toList()));
     }
 
-    private void _addRegion(long tic, StatusImpl<Region[]> status, RegionImpl reg) {
+    private void _addRegion(long tic, StatusImpl<Region[]> status, RegionImpl reg, double multiplier) {
         status.setStatus(2);
 
         RegionWrapper rw = new RegionWrapper();
         rw.region = reg;
+        rw.multiplier = multiplier;
 
         int size = regions.size();
         int i = 0;
@@ -149,7 +156,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     if (goE == null)
                         goE = graph.getEdge(n, w);
                     goE.setPath(go.getPath());
-                    graph.setEdgeWeight(goE, go.getWeight());
+                    graph.setEdgeWeight(goE, go.getWeight() * rw.multiplier);
                 }
 
                 if (direction == 0 || direction == 2) {
@@ -157,7 +164,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     if (retE == null)
                         retE = graph.getEdge(w, n);
                     retE.setPath(ret.getPath());
-                    graph.setEdgeWeight(retE, ret.getWeight());
+                    graph.setEdgeWeight(retE, ret.getWeight() * rw.multiplier);
                 }
             });
         }
@@ -534,6 +541,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
     private static class RegionWrapper {
         Region region;
+        double multiplier;
         List<Node> waypoints = new LinkedList<>();
     }
 
