@@ -2,6 +2,7 @@ package com.mattymatty.RegionalPathfinder;
 
 import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.api.region.RegionType;
+import com.mattymatty.RegionalPathfinder.core.StatusImpl;
 import com.mattymatty.RegionalPathfinder.core.loader.AsynchronousLoader;
 import com.mattymatty.RegionalPathfinder.core.loader.Loader;
 import com.mattymatty.RegionalPathfinder.core.region.BaseRegionImpl;
@@ -48,6 +49,7 @@ public class RegionalPathfinder extends JavaPlugin {
                     Logger.info("Changed to Asynchronous Loader");
                     BaseRegionImpl.loader = loader;
                     ExtendedRegionImpl.sync = false;
+                    StatusImpl.sync = false;
                 },1);
     }
 

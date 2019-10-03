@@ -32,4 +32,6 @@ public interface Status<T> {
 
     Status<T> setOnException(Consumer<Exception> onException);
     Status<T> setOnSyncException(Consumer<Exception> onSyncException);
+
+
 }

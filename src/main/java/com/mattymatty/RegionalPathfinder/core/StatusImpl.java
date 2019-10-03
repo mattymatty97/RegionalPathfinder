@@ -15,6 +15,7 @@ public class StatusImpl<T> implements Status<T> {
     public long syncTime = 0;
     public long totTime = 0;
     public float percentage = 0.0f;
+    public static boolean sync = true;
     int status = 0;
     SoftReference<T> product;
 
@@ -102,27 +103,58 @@ public class StatusImpl<T> implements Status<T> {
         return this;
     }
 
+    public StatusImpl() {
+        this.sem = new Semaphore(0);
+        if (!sync) {
+            this.eventThread = new Thread(() -> {
+                try {
+                    while (!Thread.interrupted()) {
+                        sem.acquire();
+                        if (this.isScheduled()) {
+                            if (this.onSchedule != null)
+                                this.onSchedule.run();
+                        } else if (this.isRunning()) {
+                            if (this.onProgress != null)
+                                this.onProgress.accept(percentage);
+                        } else if (this.isDone()) {
+                            if (this.onDone != null)
+                                this.onDone.accept(product.get());
+                            return;
+                        } else if (this.hasException()) {
+                            if (this.onException != null)
+                                this.onException.accept(ex);
+                            return;
+                        }
+                    }
+                } catch (InterruptedException ignored) {
+                }
+            });
+            this.syncronousLooper = Bukkit.getScheduler().runTaskTimer(RegionalPathfinder.getInstance(), this::syncRun, 1, 1);
+            this.eventThread.start();
+        }
+    }
+
     @Override
     public StatusImpl<T> setOnSyncSchedule(Runnable onSyncSchedule) {
         this.onSyncSchedule = onSyncSchedule;
+        if (sync)
+            syncRun();
         return this;
     }
 
     @Override
     public StatusImpl<T> setOnSyncProgress(Consumer<Float> onSyncProgress) {
         this.onSyncProgress = onSyncProgress;
+        if (sync)
+            syncRun();
         return this;
     }
 
     @Override
     public StatusImpl<T> setOnSyncDone(Consumer<T> onSyncDone) {
         this.onSyncDone = onSyncDone;
-        return this;
-    }
-
-    @Override
-    public StatusImpl<T> setOnSyncException(Consumer<Exception> onSyncException) {
-        this.onSyncException = onSyncException;
+        if (sync)
+            syncRun();
         return this;
     }
 
@@ -131,59 +163,41 @@ public class StatusImpl<T> implements Status<T> {
         return this;
     }
 
+    @Override
+    public StatusImpl<T> setOnSyncException(Consumer<Exception> onSyncException) {
+        this.onSyncException = onSyncException;
+        if (sync)
+            syncRun();
+        return this;
+    }
+
     public synchronized StatusImpl setStatus(int status) {
         this.status = status;
         sem.release();
         changed.set(true);
+        if (sync)
+            syncRun();
         return this;
     }
 
-
-    public StatusImpl() {
-        this.sem = new Semaphore(0);
-        this.eventThread = new Thread(() -> {
-            try {
-                while (!Thread.interrupted()) {
-                    sem.acquire();
-                    if (this.isScheduled()) {
-                        if (this.onSchedule != null)
-                            this.onSchedule.run();
-                    } else if (this.isRunning()) {
-                        if (this.onProgress != null)
-                            this.onProgress.accept(percentage);
-                    } else if (this.isDone()) {
-                        if (this.onDone != null)
-                            this.onDone.accept(product.get());
-                        return;
-                    } else if (this.hasException()) {
-                        if (this.onException != null)
-                            this.onException.accept(ex);
-                        return;
-                    }
-                }
-            } catch (InterruptedException ignored) {
+    private void syncRun() {
+        if (this.changed.get()) {
+            changed.set(false);
+            if (this.isScheduled()) {
+                if (this.onSyncSchedule != null)
+                    this.onSyncSchedule.run();
+            } else if (this.isRunning()) {
+                if (this.onSyncProgress != null)
+                    this.onSyncProgress.accept(percentage);
+            } else if (this.isDone()) {
+                if (this.onSyncDone != null)
+                    this.onSyncDone.accept(product.get());
+                this.syncronousLooper.cancel();
+            } else if (this.hasException()) {
+                if (this.onSyncException != null)
+                    this.onSyncException.accept(ex);
+                this.syncronousLooper.cancel();
             }
-        });
-        this.syncronousLooper = Bukkit.getScheduler().runTaskTimer(RegionalPathfinder.getInstance(), () -> {
-            if (this.changed.get()) {
-                changed.set(false);
-                if (this.isScheduled()) {
-                    if (this.onSyncSchedule != null)
-                        this.onSyncSchedule.run();
-                } else if (this.isRunning()) {
-                    if (this.onSyncProgress != null)
-                        this.onSyncProgress.accept(percentage);
-                } else if (this.isDone()) {
-                    if (this.onSyncDone != null)
-                        this.onSyncDone.accept(product.get());
-                    this.syncronousLooper.cancel();
-                } else if (this.hasException()) {
-                    if (this.onSyncException != null)
-                        this.onSyncException.accept(ex);
-                    this.syncronousLooper.cancel();
-                }
-            }
-        }, 1, 1);
-        this.eventThread.start();
+        }
     }
 }
