@@ -19,4 +19,6 @@ public interface ExtendedRegion extends Region {
 
     //gets the intersection points between each sub-region
     List<Location> getIntersections();
+
+    List<Region> getUnconnectedRegions();
 }

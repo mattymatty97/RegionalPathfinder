@@ -438,6 +438,11 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     }
 
     @Override
+    public List<Region> getUnconnectedRegions() {
+        return regions.entrySet().stream().filter((e) -> e.getValue().waypoints.isEmpty()).map(Map.Entry::getKey).collect(Collectors.toList());
+    }
+
+    @Override
     public Status<Path> getPath(Location start, Location end) {
         long tic = System.currentTimeMillis();
         StatusImpl<Path> status = new StatusImpl<>();
