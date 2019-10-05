@@ -9,7 +9,6 @@ import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.core.StatusImpl;
 import com.mattymatty.RegionalPathfinder.core.graph.Edge;
 import com.mattymatty.RegionalPathfinder.core.graph.Node;
-import com.mattymatty.RegionalPathfinder.exeptions.AsyncExecption;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -80,12 +79,15 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     status.setStatus(1);
                     lock.lockInterruptibly();
                     locked = true;
-                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> Logger.info("Adding region " + region.getName() + " to " + this.getName()));
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
+                            Logger.info("Adding region " + region.getName() + " to " + this.getName()));
                     _addRegion(tic, status, reg, weightMultiplier);
-                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> Logger.info("Successfully added region " + region.getName() + " to " + this.getName()));
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
+                            Logger.info("Successfully added region " + region.getName() + " to " + this.getName()));
                     lock.unlock();
                 } catch (Exception ex) {
-                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> Logger.info("Failed adding region " + region.getName() + " to " + this.getName()));
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
+                            Logger.info("Failed adding region " + region.getName() + " to " + this.getName()));
                     status.ex = ex;
                     status.setStatus(4);
                     if (locked)
@@ -176,19 +178,15 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         StatusImpl<Region[]> status = new StatusImpl<>();
         RegionImpl reg = (RegionImpl) region;
         if (sync) {
-            boolean locked = false;
             try {
                 status.setStatus(1);
-                if (lock.tryLock())
-                    throw new AsyncExecption("Async operation still running on this region", this);
-                locked = true;
+                Logger.info("Removing region " + region.getName() + " from " + this.getName());
                 _removeRegion(tic, status, reg);
-                lock.unlock();
+                Logger.info("Successfully removed region " + region.getName() + " from " + this.getName());
             } catch (Exception ex) {
+                Logger.info("Failed removing region " + region.getName() + " from " + this.getName());
                 status.ex = ex;
                 status.setStatus(4);
-                if (locked)
-                    lock.unlock();
             }
         } else
             Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(), () -> {
@@ -197,10 +195,17 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     status.setStatus(1);
                     lock.lockInterruptibly();
                     locked = true;
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
+                            Logger.info("Removing region " + region.getName() + " from " + this.getName()));
                     _removeRegion(tic, status, reg);
+
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
+                            Logger.info("Successfully removed region " + region.getName() + " from " + this.getName()));
                     lock.unlock();
 
                 } catch (Exception ex) {
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
+                            Logger.info("Failed removing region " + region.getName() + " from " + this.getName()));
                     status.ex = ex;
                     status.setStatus(4);
                     if (locked)
@@ -374,8 +379,11 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         if (sync) {
             try {
                 status.setStatus(1);
+                Logger.info("Extended region " + this.getName() + " started validating");
                 _validate(tic, status);
+                Logger.info("Extended region " + this.getName() + (isValid() ? "successfully validated" : "failed validating"));
             } catch (Exception ex) {
+                Logger.info("Extended region " + this.getName() + "failed validating");
                 status.ex = ex;
                 status.setStatus(4);
             }
@@ -386,9 +394,15 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     status.setStatus(1);
                     lock.lockInterruptibly();
                     locked = true;
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
+                            Logger.info("Extended region " + this.getName() + " started validating"));
                     _validate(tic, status);
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
+                            Logger.info("Extended region " + this.getName() + (isValid() ? "successfully validated" : "failed validating")));
                     lock.unlock();
                 } catch (Exception ex) {
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
+                            Logger.info("Extended region " + this.getName() + "failed validating"));
                     status.ex = ex;
                     status.setStatus(4);
                     if (locked)

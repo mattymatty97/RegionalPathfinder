@@ -1,6 +1,7 @@
 config-version: 1
 #---------------------
-
+#logging levels: 0 normal, 1 finer, -1 reduced
+logging-level: 1
 #the maximum sequential time an async operation should halt the server
 #in milliseconds
 async-max-halt-time: 10
