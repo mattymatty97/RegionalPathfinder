@@ -369,11 +369,6 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     public Status<Location> evaluate() {
         StatusImpl<Location> ret = new StatusImpl<>();
         if (loadData != null) {
-            if (!getValidLocations().contains(samplepoint)) {
-                ret.ex = new RegionException("samplepoint is not in the region", this);
-                ret.setStatus(4);
-                return ret;
-            }
             loadData.samplePoint = samplepoint;
             loader.evaluate(loadData, ret);
             sourceCache.invalidateAll();
@@ -387,7 +382,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
             Location actual_c1 = new Location(c1.getWorld(), c1.getBlockX(), c1.getBlockY(), c1.getBlockZ()).add(0.5, 0.5, 0.5);
             Location actual_c2 = new Location(c2.getWorld(), c2.getBlockX(), c2.getBlockY(), c2.getBlockZ()).add(0.5, 0.5, 0.5);
             lowerCorner = new Location(actual_c1.getWorld(), Math.min(actual_c1.getX(), actual_c2.getX()), Math.min(actual_c1.getY(), actual_c2.getY()), Math.min(actual_c1.getZ(), actual_c2.getZ()));
-            upperCorner = new Location(actual_c1.getWorld(), Math.max(actual_c1.getX(), actual_c2.getX()), Math.max(actual_c1.getY(), actual_c2.getY()), Math.max(actual_c1.getZ(), actual_c2.getZ()));
+            upperCorner = new Location(actual_c1.getWorld(), Math.max(actual_c1.getX(), actual_c2.getX()) + 1, Math.max(actual_c1.getY(), actual_c2.getY()) + 1, Math.max(actual_c1.getZ(), actual_c2.getZ()) + 1);
             return new Location[]{lowerCorner, upperCorner};
         }
         return null;
@@ -395,12 +390,8 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     @Override
     public Location setSamplePoint(Location sa) {
-        if (loadData != null)
-            if (sa.getWorld() == loadData.upperCorner.getWorld()) {
-                samplepoint = new Location(sa.getWorld(), sa.getBlockX(), sa.getBlockY(), sa.getBlockZ()).add(0.5, 0.5, 0.5);
-                return samplepoint;
-            }
-        return null;
+        samplepoint = new Location(sa.getWorld(), sa.getBlockX(), sa.getBlockY(), sa.getBlockZ()).add(0.5, 0.5, 0.5);
+        return samplepoint;
     }
 
     @Override

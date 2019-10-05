@@ -1,5 +1,6 @@
 package com.mattymatty.RegionalPathfinder.core.region;
 
+import com.mattymatty.RegionalPathfinder.Logger;
 import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.api.Status;
 import com.mattymatty.RegionalPathfinder.api.entity.Entity;
@@ -62,19 +63,15 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         StatusImpl<Region[]> status = new StatusImpl<>();
         RegionImpl reg = (RegionImpl) region;
         if (sync) {
-            boolean locked = false;
             try {
                 status.setStatus(1);
-                if (lock.tryLock())
-                    throw new AsyncExecption("Async operation still running on this region", this);
-                locked = true;
+                Logger.info("Adding region " + region.getName() + " to " + this.getName());
                 _addRegion(tic, status, reg, weightMultiplier);
-                lock.unlock();
+                Logger.info("Successfully added region " + region.getName() + " to " + this.getName());
             } catch (Exception ex) {
+                Logger.info("Failed adding region " + region.getName() + " to " + this.getName());
                 status.ex = ex;
                 status.setStatus(4);
-                if (locked)
-                    lock.unlock();
             }
         } else {
             Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(), () -> {
@@ -83,9 +80,12 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     status.setStatus(1);
                     lock.lockInterruptibly();
                     locked = true;
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> Logger.info("Adding region " + region.getName() + " to " + this.getName()));
                     _addRegion(tic, status, reg, weightMultiplier);
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> Logger.info("Successfully added region " + region.getName() + " to " + this.getName()));
                     lock.unlock();
                 } catch (Exception ex) {
+                    Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> Logger.info("Failed adding region " + region.getName() + " to " + this.getName()));
                     status.ex = ex;
                     status.setStatus(4);
                     if (locked)
@@ -372,19 +372,12 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         long tic = System.currentTimeMillis();
         StatusImpl<Boolean> status = new StatusImpl<>();
         if (sync) {
-            boolean locked = false;
             try {
                 status.setStatus(1);
-                if (lock.tryLock())
-                    throw new AsyncExecption("Async operation still running on this region", this);
-                locked = true;
                 _validate(tic, status);
-                lock.unlock();
             } catch (Exception ex) {
                 status.ex = ex;
                 status.setStatus(4);
-                if (locked)
-                    lock.unlock();
             }
         } else
             Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(), () -> {

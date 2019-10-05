@@ -16,8 +16,9 @@ public class StatusImpl<T> implements Status<T> {
     public long totTime = 0;
     public float percentage = 0.0f;
     public static boolean sync = true;
-    int status = 0;
-    SoftReference<T> product;
+    private boolean stop = false;
+    private int status = 0;
+    private SoftReference<T> product = new SoftReference<>(null);
 
     private Runnable onSchedule;
     private Consumer<Float> onProgress;
@@ -137,24 +138,30 @@ public class StatusImpl<T> implements Status<T> {
     @Override
     public StatusImpl<T> setOnSyncSchedule(Runnable onSyncSchedule) {
         this.onSyncSchedule = onSyncSchedule;
-        if (sync)
-            syncRun();
+        if (sync) {
+            if (isScheduled())
+                onSyncSchedule.run();
+        }
         return this;
     }
 
     @Override
     public StatusImpl<T> setOnSyncProgress(Consumer<Float> onSyncProgress) {
         this.onSyncProgress = onSyncProgress;
-        if (sync)
-            syncRun();
+        if (sync) {
+            if (isRunning())
+                onSyncProgress.accept(percentage);
+        }
         return this;
     }
 
     @Override
     public StatusImpl<T> setOnSyncDone(Consumer<T> onSyncDone) {
         this.onSyncDone = onSyncDone;
-        if (sync)
-            syncRun();
+        if (sync) {
+            if (isDone())
+                onSyncDone.accept(product.get());
+        }
         return this;
     }
 
@@ -166,8 +173,10 @@ public class StatusImpl<T> implements Status<T> {
     @Override
     public StatusImpl<T> setOnSyncException(Consumer<Exception> onSyncException) {
         this.onSyncException = onSyncException;
-        if (sync)
-            syncRun();
+        if (sync) {
+            if (hasException())
+                onSyncException.accept(ex);
+        }
         return this;
     }
 
@@ -175,28 +184,45 @@ public class StatusImpl<T> implements Status<T> {
         this.status = status;
         sem.release();
         changed.set(true);
-        if (sync)
+        if (sync) {
             syncRun();
+        }
         return this;
     }
 
     private void syncRun() {
+        if (stop) {
+            if (this.syncronousLooper != null)
+                this.syncronousLooper.cancel();
+            return;
+        }
+
         if (this.changed.get()) {
             changed.set(false);
+
             if (this.isScheduled()) {
+
                 if (this.onSyncSchedule != null)
                     this.onSyncSchedule.run();
+
             } else if (this.isRunning()) {
+
                 if (this.onSyncProgress != null)
                     this.onSyncProgress.accept(percentage);
+
             } else if (this.isDone()) {
+
                 if (this.onSyncDone != null)
                     this.onSyncDone.accept(product.get());
-                this.syncronousLooper.cancel();
+
+                stop = true;
+
             } else if (this.hasException()) {
+
                 if (this.onSyncException != null)
                     this.onSyncException.accept(ex);
-                this.syncronousLooper.cancel();
+
+                stop = true;
             }
         }
     }

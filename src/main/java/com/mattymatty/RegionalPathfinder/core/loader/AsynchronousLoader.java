@@ -6,6 +6,7 @@ import com.mattymatty.RegionalPathfinder.core.StatusImpl;
 import com.mattymatty.RegionalPathfinder.core.graph.Edge;
 import com.mattymatty.RegionalPathfinder.core.graph.Node;
 import com.mattymatty.RegionalPathfinder.exeptions.LoaderException;
+import com.mattymatty.RegionalPathfinder.exeptions.RegionException;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.scheduler.BukkitTask;
@@ -86,6 +87,12 @@ public class AsynchronousLoader implements Loader {
                 data.region.lock.unlock();
                 status.setStatus(3);
             } catch (Exception ex) {
+                Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),
+                        () -> {
+                            Logger.info("Failed loading region: " + data.region.getName());
+                            Logger.fine("server got halted for: " + status.syncTime + " ms");
+                            Logger.fine("total compute time: " + status.totTime + " ms");
+                        });
                 status.ex = ex;
                 if (locked)
                     data.region.lock.unlock();
@@ -154,6 +161,12 @@ public class AsynchronousLoader implements Loader {
                 data.region.lock.lockInterruptibly();
                 locked = true;
                 status.setStatus(2);
+                if (data.samplePoint.getWorld() != data.upperCorner.getWorld()) {
+                    throw new RegionException("samplepoint is not in the world", data.region);
+                }
+                if (!data.region.getValidLocations().contains(data.samplePoint)) {
+                    throw new RegionException("samplepoint is not in the region", data.region);
+                }
                 data.status = LoadData.Status.EVALUATING;
                 Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),
                         () -> Logger.info("Started evaluating region: " + data.region.getName()));
@@ -222,6 +235,11 @@ public class AsynchronousLoader implements Loader {
                     Logger.fine("total compute time: " + status.totTime + " ms");
                 });
             } catch (Exception ex) {
+                Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> {
+                    Logger.info("Failed evaluating region: " + data.region.getName());
+                    Logger.fine("server got halted for: " + status.syncTime + " ms");
+                    Logger.fine("total compute time: " + status.totTime + " ms");
+                });
                 status.ex = ex;
                 if (locked)
                     data.region.lock.unlock();
@@ -349,6 +367,11 @@ public class AsynchronousLoader implements Loader {
                     Logger.fine("total compute time: " + status.totTime + " ms");
                 });
             } catch (Exception ex) {
+                Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> {
+                    Logger.info("Failded validating region: " + data.region.getName());
+                    Logger.fine("server got halted for: " + status.syncTime + " ms");
+                    Logger.fine("total compute time: " + status.totTime + " ms");
+                });
                 status.ex = ex;
                 if (locked)
                     data.region.lock.unlock();
