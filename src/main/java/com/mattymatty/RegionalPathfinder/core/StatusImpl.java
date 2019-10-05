@@ -83,24 +83,36 @@ public class StatusImpl<T> implements Status<T> {
     @Override
     public StatusImpl<T> setOnSchedule(Runnable onSchedule) {
         this.onSchedule = onSchedule;
+        if (sync)
+            if (isScheduled())
+                onSchedule.run();
         return this;
     }
 
     @Override
     public StatusImpl<T> setOnProgress(Consumer<Float> onProgress) {
         this.onProgress = onProgress;
+        if (sync)
+            if (isRunning())
+                onProgress.accept(percentage);
         return this;
     }
 
     @Override
     public StatusImpl<T> setOnDone(Consumer<T> onDone) {
         this.onDone = onDone;
+        if (sync)
+            if (isDone())
+                onDone.accept(product.get());
         return this;
     }
 
     @Override
     public StatusImpl<T> setOnException(Consumer<Exception> onException) {
         this.onException = onException;
+        if (sync)
+            if (hasException())
+                onException.accept(ex);
         return this;
     }
 
