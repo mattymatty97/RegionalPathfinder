@@ -9,6 +9,7 @@ import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.core.StatusImpl;
 import com.mattymatty.RegionalPathfinder.core.graph.Edge;
 import com.mattymatty.RegionalPathfinder.core.graph.Node;
+import com.mattymatty.RegionalPathfinder.exeptions.RegionException;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -450,6 +451,12 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
             status.setStatus(1);
             boolean locked = false;
             try {
+                if (!isValid()) {
+                    status.totTime = (System.currentTimeMillis() - tic);
+                    status.ex = new RegionException("Region is not Valid", this);
+                    status.setStatus(4);
+                    return;
+                }
                 status.setStatus(1);
                 lock.lockInterruptibly();
                 locked = true;
