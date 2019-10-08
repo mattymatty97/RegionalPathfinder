@@ -23,6 +23,7 @@ import org.jgrapht.GraphPath;
 import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
@@ -80,7 +81,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     public List<Location> getValidLocations() {
         if (!lock.tryLock())
             throw new AsyncExecption("Async operation still running on this region", this);
-        List<Location> ret = (loadData == null) ? null : loader.getValid(loadData);
+        List<Location> ret = (loadData == null) ? null : new ArrayList<>(loader.getValid(loadData));
         lock.unlock();
         return ret;
     }
@@ -94,7 +95,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     public List<Location> getReachableLocations() {
         if (!lock.tryLock())
             throw new AsyncExecption("Async operation still running on this region", this);
-        List<Location> ret = (loadData == null) ? null : loader.getReachable(loadData);
+        List<Location> ret = (loadData == null) ? null : new ArrayList<>(loader.getReachable(loadData));
         lock.unlock();
         return ret;
     }
@@ -102,6 +103,11 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     @Override
     public List<Location> getReachableLocations(Location center, int radius) {
         throw new RuntimeException("Not Yet implemented");
+    }
+
+    @Override
+    public List<Location> getBoundary() {
+        return (loadData != null) ? new ArrayList<>(loadData.boundary) : null;
     }
 
     private Location upperCorner;

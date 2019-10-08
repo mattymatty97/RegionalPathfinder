@@ -1,5 +1,6 @@
 package com.mattymatty.RegionalPathfinder.core.region;
 
+import com.github.quickhull3d.QuickHull3D;
 import com.mattymatty.RegionalPathfinder.Logger;
 import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.api.Status;
@@ -27,6 +28,7 @@ import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
 import java.util.stream.Stream;
 
 public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
@@ -55,10 +57,34 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         return addRegion(region, 1.0);
     }
 
+    private List<Location> reachableLocations = new LinkedList<>();
+    private List<Location> boundary = new ArrayList<>();
+
     @Override
     public Status<Region[]> addRegion(Region region, @Positive double weightMultiplier) {
+        return addRegion(region, weightMultiplier, new ArrayList<>());
+    }
+
+    private void addWaypoints(RegionWrapper rw, List<Node> waypoints) {
+        rw.waypoints.addAll(waypoints.stream().filter(w -> !rw.waypoints.contains(w)).peek(n -> {
+            Integer count = waypointMap.getOrDefault(n, null);
+            if (count == null)
+                count = 0;
+            waypointMap.put(n, ++count);
+        }).collect(Collectors.toList()));
+    }
+
+    @Override
+    public Status<Region[]> addRegion(Region region, List<Location> excludedWaypoints) {
+        return addRegion(region, 1.0, excludedWaypoints);
+    }
+
+    @Override
+    public Status<Region[]> addRegion(Region region, @Positive double weightMultiplier, List<Location> excludedWaypoints) {
         if (regions.containsKey(region))
             return null;
+        if (excludedWaypoints == null)
+            excludedWaypoints = new ArrayList<>();
         long tic = System.currentTimeMillis();
         StatusImpl<Region[]> status = new StatusImpl<>();
         RegionImpl reg = (RegionImpl) region;
@@ -66,7 +92,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
             try {
                 status.setStatus(1);
                 Logger.info("Adding region " + region.getName() + " to " + this.getName());
-                _addRegion(tic, status, reg, weightMultiplier);
+                _addRegion(tic, status, reg, weightMultiplier, excludedWaypoints);
                 Logger.info("Successfully added region " + region.getName() + " to " + this.getName());
             } catch (Exception ex) {
                 Logger.info("Failed adding region " + region.getName() + " to " + this.getName());
@@ -74,6 +100,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                 status.setStatus(4);
             }
         } else {
+            List<Location> finalExcludedWaypoints = excludedWaypoints;
             Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(), () -> {
                 boolean locked = false;
                 try {
@@ -82,7 +109,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     locked = true;
                     Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
                             Logger.info("Adding region " + region.getName() + " to " + this.getName()));
-                    _addRegion(tic, status, reg, weightMultiplier);
+                    _addRegion(tic, status, reg, weightMultiplier, finalExcludedWaypoints);
                     Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
                             Logger.info("Successfully added region " + region.getName() + " to " + this.getName()));
                     lock.unlock();
@@ -99,16 +126,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         return status;
     }
 
-    private void addWaypoints(RegionWrapper rw, List<Node> waypoints) {
-        rw.waypoints.addAll(waypoints.stream().filter(w -> !rw.waypoints.contains(w)).peek(n->{
-            Integer count = waypointMap.getOrDefault(n,null);
-            if(count==null)
-                count = 0;
-            waypointMap.put(n,++count);
-        }).collect(Collectors.toList()));
-    }
-
-    private void _addRegion(long tic, StatusImpl<Region[]> status, RegionImpl reg, double multiplier) {
+    private void _addRegion(long tic, StatusImpl<Region[]> status, RegionImpl reg, double multiplier, List<Location> excludedWaypoints) {
         status.setStatus(2);
 
         RegionWrapper rw = new RegionWrapper();
@@ -120,7 +138,20 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         for (RegionImpl act : regions.keySet()) {
             i++;
             RegionWrapper actrw = regions.get(act);
-            List<Node> waypoints = act.getIntersection(reg).stream().map(Node::new).collect(Collectors.toList());
+            Map<Region, Long> Regions = act._getIntersection(reg).stream().map(this::getRegion).collect(Collectors.groupingBy((Region r) -> r, Collectors.counting()));
+            List<Node> waypoints = act._getIntersection(reg).stream().filter(
+                    (l) -> {
+                        if (excludedWaypoints.contains(l)) {
+                            Region loc_r = getRegion(l);
+                            long count = Regions.get(loc_r);
+                            if (count > 1) {
+                                Regions.put(loc_r, --count);
+                                return false;
+                            }
+                        }
+                        return true;
+                    }
+            ).map(Node::new).collect(Collectors.toList());
             waypoints.forEach(w -> {
                 makeEdges(act, actrw, w);
                 makeEdges(reg, rw, w);
@@ -137,6 +168,13 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         status.setProduct(regions.keySet().toArray(new Region[]{}));
         status.totTime = (System.currentTimeMillis() - tic);
         status.setStatus(3);
+        reg.getReachableLocations().forEach((l) -> {
+            if (!reachableLocations.contains(l)) {
+                reachableLocations.add(l);
+            }
+        });
+        boundary.clear();
+        calcBoundary();
     }
 
     private void makeEdges(RegionImpl region, RegionWrapper rw, Node n) {
@@ -216,36 +254,10 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         return status;
     }
 
-    private void _removeRegion(long tic, StatusImpl<Region[]> status, RegionImpl reg) {
-        status.setStatus(2);
-
-        RegionWrapper rw = regions.get(reg);
-        regions.remove(reg);
-        if (rw != null) {
-
-            int size = rw.waypoints.size();
-            int i = 0;
-            for (Node waypoint :
-                    rw.waypoints) {
-                i++;
-                Integer count = waypointMap.getOrDefault(waypoint, null);
-                if (--count < 2) {
-                    graph.removeVertex(waypoint);
-                    waypointMap.remove(waypoint);
-                } else {
-                    waypointMap.put(waypoint, count);
-                    rw.waypoints.forEach(w -> graph.removeEdge(waypoint, w));
-                }
-                status.percentage = (float) i / size;
-                status.setStatus(2);
-            }
-
-            regions.put(reg, rw);
-
-        }
-        status.setProduct(regions.keySet().toArray(new Region[]{}));
-        status.totTime = (System.currentTimeMillis() - tic);
-        status.setStatus(3);
+    private void calcBoundary() {
+        QuickHull3D hull = new QuickHull3D();
+        hull.build(getReachableLocations().stream().flatMapToDouble((l) -> DoubleStream.of(l.getX(), l.getY(), l.getZ())).toArray());
+        boundary = Arrays.stream(hull.getVertices()).map((p) -> new Location(getWorld(), p.x, p.y, p.z)).collect(Collectors.toList());
     }
 
     @Override
@@ -327,9 +339,80 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         throw new RuntimeException("Not Yet implemented");
     }
 
+    private Region getRegion(Location l) {
+        for (Region region : this.regions.keySet()) {
+            if (region.isReachableLocation(l))
+                return region;
+        }
+        return null;
+    }
+
+    private void _removeRegion(long tic, StatusImpl<Region[]> status, RegionImpl reg) {
+        status.setStatus(2);
+
+        RegionWrapper rw = regions.get(reg);
+        regions.remove(reg);
+        if (rw != null) {
+
+            int size = rw.waypoints.size();
+            int i = 0;
+            for (Node waypoint :
+                    rw.waypoints) {
+                i++;
+                Integer count = waypointMap.getOrDefault(waypoint, null);
+                if (--count < 2) {
+                    graph.removeVertex(waypoint);
+                    waypointMap.remove(waypoint);
+                } else {
+                    waypointMap.put(waypoint, count);
+                    rw.waypoints.forEach(w -> graph.removeEdge(waypoint, w));
+                }
+                status.percentage = (float) i / size;
+                status.setStatus(2);
+            }
+
+            regions.put(reg, rw);
+
+        }
+        status.setProduct(regions.keySet().toArray(new Region[]{}));
+        status.totTime = (System.currentTimeMillis() - tic);
+        reachableLocations.clear();
+        status.setStatus(3);
+        boundary.clear();
+        calcBoundary();
+    }
+
     @Override
     public List<Location> getReachableLocations() {
-        return regions.keySet().stream().flatMap(r -> r.getReachableLocations().stream()).distinct().collect(Collectors.toList());
+        if (reachableLocations.isEmpty())
+            reachableLocations = regions.keySet().stream().flatMap(r -> r.getReachableLocations().stream()).distinct().collect(Collectors.toList());
+        return new ArrayList<>(reachableLocations);
+    }
+
+    @Override
+    public List<Location> getBoundary() {
+        return new ArrayList<>(boundary);
+    }
+
+    @Override
+    public Status<List<Location>> getIntersection(Region region) {
+        StatusImpl<List<Location>> result = new StatusImpl<>();
+        if (sync) {
+            List<Location> common = new LinkedList<Location>(region.getReachableLocations());
+            common.retainAll((this.getBoundary().isEmpty()) ? this.getReachableLocations() : this.getBoundary());
+            result.setProduct(common);
+            result.setStatus(3);
+        } else {
+            result.setStatus(1);
+            new Thread(() -> {
+                result.setStatus(2);
+                List<Location> common = new LinkedList<Location>(region.getReachableLocations());
+                common.retainAll((this.getBoundary().isEmpty()) ? this.getReachableLocations() : this.getBoundary());
+                result.setProduct(common);
+                result.setStatus(3);
+            }).start();
+        }
+        return result;
     }
 
     @Override

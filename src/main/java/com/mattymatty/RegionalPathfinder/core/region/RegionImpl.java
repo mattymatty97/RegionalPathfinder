@@ -24,8 +24,7 @@ public interface RegionImpl extends Region {
         return null;
     }
 
-    //a check for intersection locations
-    default List<Location> getIntersection(RegionImpl region) {
+    default List<Location> _getIntersection(Region region) {
         List<Location> common = new LinkedList<Location>(region.getReachableLocations());
         common.retainAll(this.getReachableLocations());
         return common;

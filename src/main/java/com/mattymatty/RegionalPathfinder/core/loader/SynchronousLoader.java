@@ -1,5 +1,6 @@
 package com.mattymatty.RegionalPathfinder.core.loader;
 
+import com.github.quickhull3d.QuickHull3D;
 import com.mattymatty.RegionalPathfinder.Logger;
 import com.mattymatty.RegionalPathfinder.core.StatusImpl;
 import com.mattymatty.RegionalPathfinder.core.graph.Edge;
@@ -14,9 +15,12 @@ import org.jgrapht.alg.interfaces.StrongConnectivityAlgorithm;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.builder.GraphTypeBuilder;
 
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
 
 public class SynchronousLoader implements Loader {
 
@@ -156,6 +160,10 @@ public class SynchronousLoader implements Loader {
 
             data.reachableGraph = scs;
             data.shortestPath = new DijkstraShortestPath<>(data.getReachableGraph());
+            QuickHull3D hull = new QuickHull3D();
+            hull.build(scs.vertexSet().stream().map(Node::getLoc).flatMapToDouble((l) -> DoubleStream.of(l.getX(), l.getY(), l.getZ())).toArray());
+
+            data.boundary = Arrays.stream(hull.getVertices()).map((p) -> new Location(data.lowerCorner.getWorld(), p.x, p.y, p.z)).collect(Collectors.toList());
 
             status.totTime = (toc - tic);
             status.setProduct(data.samplePoint);

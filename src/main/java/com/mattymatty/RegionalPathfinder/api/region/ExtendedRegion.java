@@ -9,7 +9,13 @@ import java.util.List;
 public interface ExtendedRegion extends Region {
 
     //adds a sub-region to this extended region
+    Status<Region[]> addRegion(Region region, @Positive double weightMultiplier, List<Location> excludedWayPoints);
+
+    //adds a sub-region to this extended region
     Status<Region[]> addRegion(Region region, @Positive double weightMultiplier);
+
+    //wrapper for backwise compatibility ( equals to addRegion( region , 1.0 ); )
+    Status<Region[]> addRegion(Region region, List<Location> excludedWayPoints);
 
     //wrapper for backwise compatibility ( equals to addRegion( region , 1.0 ); )
     Status<Region[]> addRegion(Region region);

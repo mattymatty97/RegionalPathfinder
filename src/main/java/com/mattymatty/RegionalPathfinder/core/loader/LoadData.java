@@ -7,7 +7,9 @@ import org.bukkit.Location;
 import org.jgrapht.Graph;
 import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class LoadData {
@@ -25,6 +27,7 @@ public class LoadData {
     int x_size;
     int y_size;
     int z_size;
+    public List<Location> boundary = new ArrayList<>();
 
     public LoadData(BaseRegionImpl region, Location upperCorner, Location lowerCorner) {
         this.region = region;

@@ -2,9 +2,11 @@ package com.mattymatty.RegionalPathfinder.api.region;
 
 import com.mattymatty.RegionalPathfinder.api.Status;
 import com.mattymatty.RegionalPathfinder.api.entity.Entity;
+import com.mattymatty.RegionalPathfinder.core.StatusImpl;
 import org.bukkit.Location;
 import org.bukkit.World;
 
+import java.util.LinkedList;
 import java.util.List;
 
 /*
@@ -46,6 +48,29 @@ public interface Region {
      **/
     List<Location> getReachableLocations(Location center, int radius);
 
+    List<Location> getBoundary();
+
+
+    //a check for intersection locations
+    default Status<List<Location>> getIntersection(Region region) {
+        StatusImpl<List<Location>> result = new StatusImpl<>();
+        if (StatusImpl.sync) {
+            List<Location> common = new LinkedList<Location>(region.getReachableLocations());
+            common.retainAll(this.getReachableLocations());
+            result.setProduct(common);
+            result.setStatus(3);
+        } else {
+            result.setStatus(1);
+            new Thread(() -> {
+                result.setStatus(2);
+                List<Location> common = new LinkedList<Location>(region.getReachableLocations());
+                common.retainAll(this.getReachableLocations());
+                result.setProduct(common);
+                result.setStatus(3);
+            }).start();
+        }
+        return result;
+    }
 
     //tester if a location is inside the definition zone (lowerCorner,highCorner)
     boolean isInRegion(Location location);
