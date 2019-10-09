@@ -4,8 +4,8 @@ import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.api.region.RegionType;
 import org.bukkit.Location;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /*
@@ -24,8 +24,8 @@ public interface RegionImpl extends Region {
         return null;
     }
 
-    default List<Location> _getIntersection(Region region) {
-        List<Location> common = new LinkedList<Location>(region.getReachableLocations());
+    default Set<Location> _getIntersection(Region region) {
+        Set<Location> common = new HashSet<>(region.getReachableLocations());
         common.retainAll(this.getReachableLocations());
         return common;
     }

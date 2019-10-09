@@ -1,6 +1,5 @@
 package com.mattymatty.RegionalPathfinder.core.region;
 
-import com.github.quickhull3d.QuickHull3D;
 import com.mattymatty.RegionalPathfinder.Logger;
 import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.api.Status;
@@ -28,10 +27,16 @@ import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
-import java.util.stream.DoubleStream;
 import java.util.stream.Stream;
 
 public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
+
+    public final Map<Integer, Map<Integer, Map<Integer, Location>>> reachableLocationsMap = new HashMap<>();
+    private long min_x = Long.MAX_VALUE;
+    private long min_y = Long.MAX_VALUE;
+    private long min_z = Long.MAX_VALUE;
+    private long max_x = Long.MIN_VALUE;
+    private long max_y = Long.MIN_VALUE;
 
     public static boolean sync = true;
 
@@ -51,14 +56,14 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
     private final ShortestPathAlgorithm<Node, Edge> spa = new DijkstraShortestPath<>(graph);
     private List<WeakReference<RegionImpl>> backreferences = new LinkedList<>();
+    private long max_z = Long.MIN_VALUE;
 
     @Override
     public Status<Region[]> addRegion(Region region) {
         return addRegion(region, 1.0);
     }
 
-    private List<Location> reachableLocations = new LinkedList<>();
-    private List<Location> boundary = new ArrayList<>();
+    private Set<Location> reachableLocations = new HashSet<>();
 
     @Override
     public Status<Region[]> addRegion(Region region, @Positive double weightMultiplier) {
@@ -165,16 +170,12 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         regions.put(reg, rw);
         reg.referencer(this);
 
+        reg.getReachableLocations().forEach(this::computeLocations);
+
+        reachableLocations.addAll(reg.getReachableLocations());
         status.setProduct(regions.keySet().toArray(new Region[]{}));
         status.totTime = (System.currentTimeMillis() - tic);
         status.setStatus(3);
-        reg.getReachableLocations().forEach((l) -> {
-            if (!reachableLocations.contains(l)) {
-                reachableLocations.add(l);
-            }
-        });
-        boundary.clear();
-        calcBoundary();
     }
 
     private void makeEdges(RegionImpl region, RegionWrapper rw, Node n) {
@@ -254,12 +255,6 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         return status;
     }
 
-    private void calcBoundary() {
-        QuickHull3D hull = new QuickHull3D();
-        hull.build(getReachableLocations().stream().flatMapToDouble((l) -> DoubleStream.of(l.getX(), l.getY(), l.getZ())).toArray());
-        boundary = Arrays.stream(hull.getVertices()).map((p) -> new Location(getWorld(), p.x, p.y, p.z)).collect(Collectors.toList());
-    }
-
     @Override
     public void delete() {
 
@@ -330,12 +325,22 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     }
 
     @Override
-    public List<Location> getValidLocations() {
-        return regions.keySet().stream().flatMap(r -> r.getValidLocations().stream()).distinct().collect(Collectors.toList());
+    public Location getMinCorner() {
+        return (min_x == Long.MAX_VALUE) ? null : new Location(getWorld(), min_x, min_y, min_z);
     }
 
     @Override
-    public List<Location> getValidLocations(Location center, int radius) {
+    public Location getMaxCorner() {
+        return (max_x == Long.MIN_VALUE) ? null : new Location(getWorld(), max_x, max_y, max_z);
+    }
+
+    @Override
+    public Set<Location> getValidLocations() {
+        return regions.keySet().stream().flatMap(r -> r.getValidLocations().stream()).distinct().collect(Collectors.toSet());
+    }
+
+    @Override
+    public Set<Location> getValidLocations(Location center, int radius) {
         throw new RuntimeException("Not Yet implemented");
     }
 
@@ -377,42 +382,52 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         status.setProduct(regions.keySet().toArray(new Region[]{}));
         status.totTime = (System.currentTimeMillis() - tic);
         reachableLocations.clear();
+        getReachableLocations();
+        reachableLocationsMap.clear();
+        min_x = Long.MAX_VALUE;
+        min_y = Long.MAX_VALUE;
+        min_z = Long.MAX_VALUE;
+        max_x = Long.MIN_VALUE;
+        max_y = Long.MIN_VALUE;
+        max_z = Long.MIN_VALUE;
+        reachableLocations.forEach(this::computeLocations);
         status.setStatus(3);
-        boundary.clear();
-        calcBoundary();
     }
 
     @Override
-    public List<Location> getReachableLocations() {
+    public Set<Location> getReachableLocations() {
         if (reachableLocations.isEmpty())
-            reachableLocations = regions.keySet().stream().flatMap(r -> r.getReachableLocations().stream()).distinct().collect(Collectors.toList());
-        return new ArrayList<>(reachableLocations);
+            reachableLocations = regions.keySet().stream().flatMap(r -> r.getReachableLocations().stream()).distinct().collect(Collectors.toSet());
+        return new HashSet<>(reachableLocations);
     }
 
     @Override
-    public List<Location> getBoundary() {
-        return new ArrayList<>(boundary);
-    }
-
-    @Override
-    public Status<List<Location>> getIntersection(Region region) {
-        StatusImpl<List<Location>> result = new StatusImpl<>();
+    public Status<Set<Location>> getIntersection(Region region) {
+        StatusImpl<Set<Location>> result = new StatusImpl<>();
         if (sync) {
-            List<Location> common = new LinkedList<Location>(region.getReachableLocations());
-            common.retainAll((this.getBoundary().isEmpty()) ? this.getReachableLocations() : this.getBoundary());
-            result.setProduct(common);
+            result.setProduct(_getIntersection(region));
             result.setStatus(3);
         } else {
             result.setStatus(1);
             new Thread(() -> {
                 result.setStatus(2);
-                List<Location> common = new LinkedList<Location>(region.getReachableLocations());
-                common.retainAll((this.getBoundary().isEmpty()) ? this.getReachableLocations() : this.getBoundary());
-                result.setProduct(common);
+                result.setProduct(_getIntersection(region));
                 result.setStatus(3);
             }).start();
         }
         return result;
+    }
+
+    @Override
+    public Set<Location> _getIntersection(Region region) {
+        Set<Location> common = new HashSet<>(region.getReachableLocations());
+        Location min = region.getMinCorner();
+        Location max = region.getMaxCorner();
+        Location center = new Location(getWorld(), (min.getBlockX() + max.getBlockX()) / 2.0, (min.getBlockY() + max.getBlockY()) / 2.0, (min.getBlockZ() + max.getBlockZ()) / 2.0);
+        int radius = (int) Math.floor((Math.max(max.getBlockX() - min.getBlockX(), Math.max(max.getBlockY() - min.getBlockY(), max.getBlockZ() - min.getBlockZ())) / 2.0));
+
+        common.retainAll(this.getReachableLocations(center, radius));
+        return common;
     }
 
     @Override
@@ -421,8 +436,23 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     }
 
     @Override
-    public List<Location> getReachableLocations(Location center, int radius) {
-        throw new RuntimeException("Not Yet implemented");
+    public Set<Location> getReachableLocations(Location center, int radius) {
+        if (reachableLocationsMap.isEmpty())
+            return null;
+        Set<Location> result = new HashSet<>();
+        for (int y = center.getBlockY() - radius; y < center.getBlockY() + radius; y++) {
+            for (int z = center.getBlockZ() - radius; z < center.getBlockZ() + radius; z++) {
+                for (int x = center.getBlockX() - radius; x < center.getBlockX() + radius; x++) {
+                    int finalZ = z;
+                    int finalX = x;
+                    Optional.ofNullable(reachableLocationsMap.get(y))
+                            .flatMap(z_map -> Optional.ofNullable(z_map.get(finalZ)))
+                            .flatMap(x_map -> Optional.ofNullable(x_map.get(finalX)))
+                            .ifPresent(result::add);
+                }
+            }
+        }
+        return result;
     }
 
     @Override
@@ -639,6 +669,24 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     @Override
     public void referencer(RegionImpl region) {
         backreferences.add(new WeakReference<>(region));
+    }
+
+    private void computeLocations(Location l) {
+        if (l.getBlockY() < min_y)
+            min_y = l.getBlockY();
+        if (l.getBlockZ() < min_z)
+            min_z = l.getBlockZ();
+        if (l.getBlockX() < min_x)
+            min_x = l.getBlockX();
+        if (l.getBlockY() > max_y)
+            max_y = l.getBlockY();
+        if (l.getBlockZ() > max_z)
+            max_z = l.getBlockZ();
+        if (l.getBlockX() > max_x)
+            max_x = l.getBlockX();
+        Map<Integer, Map<Integer, Location>> z_map = reachableLocationsMap.computeIfAbsent(l.getBlockY(), k -> new HashMap<>());
+        Map<Integer, Location> x_set = z_map.computeIfAbsent(l.getBlockZ(), k -> new HashMap<>());
+        x_set.put(l.getBlockX(), l);
     }
 
     private static class RegionWrapper {

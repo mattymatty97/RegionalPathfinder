@@ -1,6 +1,5 @@
 package com.mattymatty.RegionalPathfinder.core.loader;
 
-import com.github.quickhull3d.QuickHull3D;
 import com.mattymatty.RegionalPathfinder.Logger;
 import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.core.StatusImpl;
@@ -18,14 +17,9 @@ import org.jgrapht.alg.interfaces.StrongConnectivityAlgorithm;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.builder.GraphTypeBuilder;
 
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-import java.util.stream.DoubleStream;
 
 public class AsynchronousLoader implements Loader {
 
@@ -227,10 +221,12 @@ public class AsynchronousLoader implements Loader {
 
                 data.reachableGraph = scs;
                 data.shortestPath = new DijkstraShortestPath<>(data.getReachableGraph());
-                QuickHull3D hull = new QuickHull3D();
-                hull.build(scs.vertexSet().stream().map(Node::getLoc).flatMapToDouble((l) -> DoubleStream.of(l.getX(), l.getY(), l.getZ())).toArray());
 
-                data.boundary = Arrays.stream(hull.getVertices()).map((p) -> new Location(data.lowerCorner.getWorld(), p.x, p.y, p.z)).collect(Collectors.toList());
+                scs.vertexSet().stream().map(Node::getLoc).forEach(l -> {
+                    Map<Integer, Map<Integer, Location>> z_map = data.reachableLocationsMap.computeIfAbsent(l.getBlockY(), k -> new HashMap<>());
+                    Map<Integer, Location> x_set = z_map.computeIfAbsent(l.getBlockZ(), k -> new HashMap<>());
+                    x_set.put(l.getBlockX(), l);
+                });
 
                 status.totTime = (toc - tic);
                 status.setProduct(data.samplePoint);

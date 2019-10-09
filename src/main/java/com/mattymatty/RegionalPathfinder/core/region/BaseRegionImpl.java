@@ -23,9 +23,7 @@ import org.jgrapht.GraphPath;
 import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
 
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
@@ -78,36 +76,46 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     private Location lowerCorner;
 
     @Override
-    public List<Location> getValidLocations() {
+    public Set<Location> getValidLocations() {
         if (!lock.tryLock())
             throw new AsyncExecption("Async operation still running on this region", this);
-        List<Location> ret = (loadData == null) ? null : new ArrayList<>(loader.getValid(loadData));
+        Set<Location> ret = (loadData == null) ? null : new HashSet<>(loader.getValid(loadData));
         lock.unlock();
         return ret;
     }
 
     @Override
-    public List<Location> getValidLocations(Location center, int radius) {
+    public Set<Location> getValidLocations(Location center, int radius) {
         throw new RuntimeException("Not Yet implemented");
     }
 
     @Override
-    public List<Location> getReachableLocations() {
+    public Set<Location> getReachableLocations() {
         if (!lock.tryLock())
             throw new AsyncExecption("Async operation still running on this region", this);
-        List<Location> ret = (loadData == null) ? null : new ArrayList<>(loader.getReachable(loadData));
+        Set<Location> ret = (loadData == null) ? null : new HashSet<>(loader.getReachable(loadData));
         lock.unlock();
         return ret;
     }
 
     @Override
-    public List<Location> getReachableLocations(Location center, int radius) {
-        throw new RuntimeException("Not Yet implemented");
-    }
-
-    @Override
-    public List<Location> getBoundary() {
-        return (loadData != null) ? new ArrayList<>(loadData.boundary) : null;
+    public Set<Location> getReachableLocations(Location center, int radius) {
+        if (loadData == null)
+            return null;
+        Set<Location> result = new HashSet<>();
+        for (int y = center.getBlockY() - radius; y < center.getBlockY() + radius; y++) {
+            for (int z = center.getBlockZ() - radius; z < center.getBlockZ() + radius; z++) {
+                for (int x = center.getBlockX() - radius; x < center.getBlockX() + radius; x++) {
+                    int finalZ = z;
+                    int finalX = x;
+                    Optional.ofNullable(loadData.reachableLocationsMap.get(y))
+                            .flatMap(z_map -> Optional.ofNullable(z_map.get(finalZ)))
+                            .flatMap(x_map -> Optional.ofNullable(x_map.get(finalX)))
+                            .ifPresent(result::add);
+                }
+            }
+        }
+        return result;
     }
 
     private Location upperCorner;
@@ -172,6 +180,17 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
             };
         lock.unlock();
         return ret;
+    }
+
+    @Override
+    public Location getMinCorner() {
+        return (loadData == null) ? null : loadData.lowerCorner;
+    }
+
+    @Override
+    public Location getMaxCorner() {
+
+        return (loadData == null) ? null : loadData.upperCorner;
     }
 
     @Override

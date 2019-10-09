@@ -6,8 +6,9 @@ import com.mattymatty.RegionalPathfinder.core.StatusImpl;
 import org.bukkit.Location;
 import org.bukkit.World;
 
-import java.util.LinkedList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /*
     THIS CLASS IS THE PUBLIC INTERFACE THAT USERS SHOULD USE
@@ -28,34 +29,36 @@ public interface Region {
     //the corners of this region ( 6 if lvl 1, more if higher lvl but always multiples of 6 )
     Location[] getCorners();
 
+    Location getMinCorner();
+
+    Location getMaxCorner();
+
     //a getter for all the locations where the entity can stand
-    List<Location> getValidLocations();
+    Set<Location> getValidLocations();
 
     //a getter for all the locations where the entity can stand near a point
 
     /**
      * //  NOT YET IMPLEMENTED
      **/
-    List<Location> getValidLocations(Location center, int radius);
+    Set<Location> getValidLocations(Location center, int radius);
 
     //a getter for all the locations where the entity can walk to
-    List<Location> getReachableLocations();
+    Set<Location> getReachableLocations();
 
     //a getter for all the locations where the entity can stand near a point
 
     /**
      * //  NOT YET IMPLEMENTED
      **/
-    List<Location> getReachableLocations(Location center, int radius);
-
-    List<Location> getBoundary();
+    Set<Location> getReachableLocations(Location center, int radius);
 
 
     //a check for intersection locations
-    default Status<List<Location>> getIntersection(Region region) {
-        StatusImpl<List<Location>> result = new StatusImpl<>();
+    default Status<Set<Location>> getIntersection(Region region) {
+        StatusImpl<Set<Location>> result = new StatusImpl<>();
         if (StatusImpl.sync) {
-            List<Location> common = new LinkedList<Location>(region.getReachableLocations());
+            Set<Location> common = new HashSet<>(region.getReachableLocations());
             common.retainAll(this.getReachableLocations());
             result.setProduct(common);
             result.setStatus(3);
@@ -63,7 +66,7 @@ public interface Region {
             result.setStatus(1);
             new Thread(() -> {
                 result.setStatus(2);
-                List<Location> common = new LinkedList<Location>(region.getReachableLocations());
+                Set<Location> common = new HashSet<Location>(region.getReachableLocations());
                 common.retainAll(this.getReachableLocations());
                 result.setProduct(common);
                 result.setStatus(3);

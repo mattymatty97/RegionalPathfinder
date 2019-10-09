@@ -13,10 +13,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 @SuppressWarnings("Duplicates")
@@ -152,7 +149,7 @@ public class Commands implements CommandExecutor {
                                 }
                                 case "validloc":
                                 case "validlocations": {
-                                    List<Location> locations = region.getValidLocations();
+                                    Set<Location> locations = region.getValidLocations();
                                     if (locations.isEmpty()) {
                                         sender.sendMessage("Error no valid locations");
                                     } else {
@@ -163,7 +160,7 @@ public class Commands implements CommandExecutor {
                                 }
                                 case "reachableloc":
                                 case "reachablelocations": {
-                                    List<Location> locations = region.getReachableLocations();
+                                    Set<Location> locations = region.getReachableLocations();
                                     if (locations.isEmpty()) {
                                         sender.sendMessage("Error no reachable locations");
                                     } else {
@@ -224,7 +221,7 @@ public class Commands implements CommandExecutor {
                                 }
                                 case "validloc":
                                 case "validlocations": {
-                                    List<Location> locations = region.getValidLocations();
+                                    Set<Location> locations = region.getValidLocations();
                                     if (locations.isEmpty()) {
                                         sender.sendMessage("Error no valid locations");
                                     } else {
@@ -235,7 +232,7 @@ public class Commands implements CommandExecutor {
                                 }
                                 case "reachableloc":
                                 case "reachablelocations": {
-                                    List<Location> locations = region.getReachableLocations();
+                                    Set<Location> locations = region.getReachableLocations();
                                     if (locations.isEmpty()) {
                                         sender.sendMessage("Error no reachable locations");
                                     } else {
