@@ -195,7 +195,6 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
     private void _addRegion(long tic, StatusImpl<Region[]> status, RegionImpl reg, double multiplier, Set<Location> excludedWaypoints) {
         status.setStatus(2);
-        invalidate();
         RegionWrapper rw = new RegionWrapper();
         rw.region = reg;
         rw.multiplier = multiplier;
@@ -211,6 +210,8 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                         }
                 )
         );
+
+        invalidate();
 
         Map<Node, Set<RegionImpl>> actIntersectionMap = intersectionMap.entrySet().stream().filter((e) -> {
             if (!excludedWaypoints.contains(e.getKey().getLoc()))
