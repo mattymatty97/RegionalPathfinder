@@ -3,10 +3,10 @@ package com.mattymatty.RegionalPathfinder.api.region;
 import com.mattymatty.RegionalPathfinder.api.Status;
 import com.mattymatty.RegionalPathfinder.api.entity.Entity;
 import com.mattymatty.RegionalPathfinder.core.StatusImpl;
+import com.mattymatty.RegionalPathfinder.core.region.RegionImpl;
 import org.bukkit.Location;
 import org.bukkit.World;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -41,7 +41,7 @@ public interface Region {
     /**
      * //  NOT YET IMPLEMENTED
      **/
-    Set<Location> getValidLocations(Location center, int radius);
+    Set<Location> getValidLocations(Location center, int range);
 
     //a getter for all the locations where the entity can walk to
     Set<Location> getReachableLocations();
@@ -51,24 +51,22 @@ public interface Region {
     /**
      * //  NOT YET IMPLEMENTED
      **/
-    Set<Location> getReachableLocations(Location center, int radius);
+    Set<Location> getReachableLocations(Location center, int range);
+
+    Set<Location> getReachableLocations(Location center, int x_range, int y_range, int z_range);
 
 
     //a check for intersection locations
     default Status<Set<Location>> getIntersection(Region region) {
         StatusImpl<Set<Location>> result = new StatusImpl<>();
         if (StatusImpl.sync) {
-            Set<Location> common = new HashSet<>(region.getReachableLocations());
-            common.retainAll(this.getReachableLocations());
-            result.setProduct(common);
+            result.setProduct(((RegionImpl) this)._getIntersection(region));
             result.setStatus(3);
         } else {
             result.setStatus(1);
             new Thread(() -> {
                 result.setStatus(2);
-                Set<Location> common = new HashSet<Location>(region.getReachableLocations());
-                common.retainAll(this.getReachableLocations());
-                result.setProduct(common);
+                result.setProduct(((RegionImpl) this)._getIntersection(region));
                 result.setStatus(3);
             }).start();
         }

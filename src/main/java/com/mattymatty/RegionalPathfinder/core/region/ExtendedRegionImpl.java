@@ -37,6 +37,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     private long min_z = Long.MAX_VALUE;
     private long max_x = Long.MIN_VALUE;
     private long max_y = Long.MIN_VALUE;
+    private long max_z = Long.MIN_VALUE;
 
     public static boolean sync = true;
 
@@ -48,7 +49,9 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
     private Map<Node, Integer> waypointMap = new HashMap<>();
 
-    private Graph<Node, Edge> graph = GraphTypeBuilder.<Node, Edge>directed().edgeClass(Edge.class).weighted(true).buildGraph();
+    private Graph<Node, Edge> graph = GraphTypeBuilder.<Node, Edge>directed().edgeClass(Edge.class).allowingSelfLoops(true).weighted(true).buildGraph();
+
+    private Map<Location, Node> nodeMap = new HashMap<>();
 
     private Lock lock = new ReentrantLock();
 
@@ -56,7 +59,6 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
     private final ShortestPathAlgorithm<Node, Edge> spa = new DijkstraShortestPath<>(graph);
     private List<WeakReference<RegionImpl>> backreferences = new LinkedList<>();
-    private long max_z = Long.MIN_VALUE;
 
     @Override
     public Status<Region[]> addRegion(Region region) {
@@ -67,29 +69,38 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
     @Override
     public Status<Region[]> addRegion(Region region, @Positive double weightMultiplier) {
-        return addRegion(region, weightMultiplier, new ArrayList<>());
+        return addRegion(region, weightMultiplier, new HashSet<>());
     }
 
-    private void addWaypoints(RegionWrapper rw, List<Node> waypoints) {
-        rw.waypoints.addAll(waypoints.stream().filter(w -> !rw.waypoints.contains(w)).peek(n -> {
-            Integer count = waypointMap.getOrDefault(n, null);
+    private void addWaypoints(RegionWrapper rw, Set<Location> waypoints) {
+        waypoints.stream().filter((n) -> !rw.waypoints.contains(nodeMap.computeIfAbsent(n, Node::new))).forEach(n -> {
+            Integer count = waypointMap.getOrDefault(nodeMap.computeIfAbsent(n, Node::new), null);
             if (count == null)
                 count = 0;
-            waypointMap.put(n, ++count);
-        }).collect(Collectors.toList()));
+            waypointMap.put(nodeMap.computeIfAbsent(n, Node::new), ++count);
+        });
+        rw.waypoints.addAll(waypoints.stream().map((n) -> nodeMap.computeIfAbsent(n, Node::new)).collect(Collectors.toSet()));
+    }
+
+    private void addWaypoint(RegionWrapper rw, Node waypoint) {
+        Integer count = waypointMap.getOrDefault(waypoint, null);
+        if (count == null)
+            count = 0;
+        waypointMap.put(waypoint, ++count);
+        rw.waypoints.add(waypoint);
     }
 
     @Override
-    public Status<Region[]> addRegion(Region region, List<Location> excludedWaypoints) {
+    public Status<Region[]> addRegion(Region region, Set<Location> excludedWaypoints) {
         return addRegion(region, 1.0, excludedWaypoints);
     }
 
     @Override
-    public Status<Region[]> addRegion(Region region, @Positive double weightMultiplier, List<Location> excludedWaypoints) {
+    public Status<Region[]> addRegion(Region region, @Positive double weightMultiplier, Set<Location> excludedWaypoints) {
         if (regions.containsKey(region))
             return null;
         if (excludedWaypoints == null)
-            excludedWaypoints = new ArrayList<>();
+            excludedWaypoints = new HashSet<>();
         long tic = System.currentTimeMillis();
         StatusImpl<Region[]> status = new StatusImpl<>();
         RegionImpl reg = (RegionImpl) region;
@@ -105,7 +116,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                 status.setStatus(4);
             }
         } else {
-            List<Location> finalExcludedWaypoints = excludedWaypoints;
+            Set<Location> finalExcludedWaypoints = excludedWaypoints;
             Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(), () -> {
                 boolean locked = false;
                 try {
@@ -131,7 +142,8 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         return status;
     }
 
-    private void _addRegion(long tic, StatusImpl<Region[]> status, RegionImpl reg, double multiplier, List<Location> excludedWaypoints) {
+    /*
+    private void _ogaddRegion(long tic, StatusImpl<Region[]> status, RegionImpl reg, double multiplier, Set<Location> excludedWaypoints) {
         status.setStatus(2);
 
         RegionWrapper rw = new RegionWrapper();
@@ -144,7 +156,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
             i++;
             RegionWrapper actrw = regions.get(act);
             Map<Region, Long> Regions = act._getIntersection(reg).stream().map(this::getRegion).collect(Collectors.groupingBy((Region r) -> r, Collectors.counting()));
-            List<Node> waypoints = act._getIntersection(reg).stream().filter(
+            Set<Node> waypoints = act._getIntersection(reg).stream().filter(
                     (l) -> {
                         if (excludedWaypoints.contains(l)) {
                             Region loc_r = getRegion(l);
@@ -156,15 +168,69 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                         }
                         return true;
                     }
-            ).map(Node::new).collect(Collectors.toList());
+            ).map((l) -> nodeMap.computeIfAbsent(l, Node::new)).collect(Collectors.toSet());
             waypoints.forEach(w -> {
-                makeEdges(act, actrw, w);
-                makeEdges(reg, rw, w);
+                if (!actrw.waypoints.contains(w))
+                    makeEdges(act, actrw, w);
+                if (!rw.waypoints.contains(w))
+                    makeEdges(reg, rw, w);
             });
-            addWaypoints(actrw, waypoints);
-            addWaypoints(rw, waypoints);
+            addWaypoints(actrw, waypoints.stream().filter((n) -> act.isReachableLocation(n.getLoc())).collect(Collectors.toSet()));
+            addWaypoints(rw, waypoints.stream().filter((n) -> reg.isReachableLocation(n.getLoc())).collect(Collectors.toSet()));
             status.percentage = (float) i / size;
             status.setStatus(2);
+        }
+
+        regions.put(reg, rw);
+        reg.referencer(this);
+
+        reg.getReachableLocations().forEach(this::computeLocations);
+
+        reachableLocations.addAll(reg.getReachableLocations());
+        status.setProduct(regions.keySet().toArray(new Region[]{}));
+        status.totTime = (System.currentTimeMillis() - tic);
+        status.setStatus(3);
+
+    }*/
+
+    private void _addRegion(long tic, StatusImpl<Region[]> status, RegionImpl reg, double multiplier, Set<Location> excludedWaypoints) {
+        status.setStatus(2);
+        invalidate();
+        RegionWrapper rw = new RegionWrapper();
+        rw.region = reg;
+        rw.multiplier = multiplier;
+
+        Map<RegionImpl, Integer> regionCount = new HashMap<>();
+        Map<Node, Set<RegionImpl>> intersectionMap = new HashMap<>();
+        this._getIntersection(reg).stream().map(l -> nodeMap.computeIfAbsent(l, Node::new)).forEach(
+                (n) -> regions.keySet().stream().filter((r) -> r.isReachableLocation(n.getLoc())).forEach(
+                        (r) -> {
+                            intersectionMap.computeIfAbsent(n, (k) -> new HashSet<>()).add(r);
+                            int count = regionCount.computeIfAbsent(r, (k) -> 0);
+                            regionCount.put(r, ++count);
+                        }
+                )
+        );
+
+        Map<Node, Set<RegionImpl>> actIntersectionMap = intersectionMap.entrySet().stream().filter((e) -> {
+            if (!excludedWaypoints.contains(e.getKey().getLoc()))
+                return true;
+            if (e.getValue().stream().anyMatch((r) -> (regionCount.get(r) - 1) == 0))
+                return true;
+            e.getValue().forEach((r) -> regionCount.put(r, regionCount.get(r) - 1));
+            return false;
+        }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        for (Node node : actIntersectionMap.keySet()) {
+            Set<RegionImpl> border_regions = intersectionMap.get(node);
+            for (RegionImpl act : border_regions) {
+                RegionWrapper actrw = regions.get(act);
+
+                makeEdges(act, actrw, node);
+                makeEdges(reg, rw, node);
+                addWaypoint(actrw, node);
+                addWaypoint(rw, node);
+            }
         }
 
         regions.put(reg, rw);
@@ -184,8 +250,10 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
     private void makeEdges(RegionImpl region, RegionWrapper rw, Node n, int direction) {
         if (!rw.waypoints.contains(n)) {
-            if (!graph.containsVertex(n))
+            if (!graph.containsVertex(n)) {
                 graph.addVertex(n);
+                nodeMap.put(n.getLoc(), n);
+            }
             rw.waypoints.forEach(w -> {
                 Path go = null, ret = null;
                 if (direction == 0 || direction == 1)
@@ -242,7 +310,6 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
                             Logger.info("Successfully removed region " + region.getName() + " from " + this.getName()));
                     lock.unlock();
-
                 } catch (Exception ex) {
                     Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
                             Logger.info("Failed removing region " + region.getName() + " from " + this.getName()));
@@ -274,8 +341,13 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     public Path _getPath(Location start, Location end) {
 
         lock.lock();
-        RegionImpl sreg = regions.keySet().stream().sorted(Comparator.comparing(Region::getLevel)).filter(r -> r.isReachableLocation(start)).findFirst().get();
-        RegionImpl ereg = regions.keySet().stream().sorted(Comparator.comparing(Region::getLevel)).filter(r -> r.isReachableLocation(end)).findFirst().get();
+
+        if (!isReachableLocation(start) || !isReachableLocation(end)) {
+            return null;
+        }
+
+        RegionImpl sreg = (RegionImpl) getRegion(start);
+        RegionImpl ereg = (RegionImpl) getRegion(end);
 
         if (sreg == ereg)
             return sreg._getPath(start, end);
@@ -283,20 +355,48 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         RegionWrapper swr = regions.get(sreg);
         RegionWrapper ewr = regions.get(ereg);
 
-        Node snode = new Node(start);
-        Node enode = new Node(end);
+        Location act_s = new Location(
+                start.getWorld(),
+                start.getBlockX() + 0.5,
+                start.getBlockY() + 0.5,
+                start.getBlockZ() + 0.5
+        );
+
+        Location act_e = new Location(
+                end.getWorld(),
+                end.getBlockX() + 0.5,
+                end.getBlockY() + 0.5,
+                end.getBlockZ() + 0.5
+        );
 
         boolean sadded = false;
         boolean eadded = false;
 
+        Node snode = nodeMap.get(act_s);
+
+        if (snode == null) {
+            snode = new Node(act_s);
+            sadded = true;
+        }
+
+        Node enode = nodeMap.get(act_e);
+
+        if (enode == null) {
+            enode = new Node(act_e);
+            eadded = true;
+        }
+
+        boolean sradded = false;
+        boolean eradded = false;
+
         if (!swr.waypoints.contains(snode)) {
             makeEdges(sreg, swr, snode, 1);
-            sadded = true;
+            sradded = true;
         }
 
         if (!ewr.waypoints.contains(enode)) {
             makeEdges(ereg, ewr, enode, 2);
-            eadded = true;
+            eradded = true;
         }
 
         GraphPath<Node, Edge> path = spa.getPath(snode, enode);
@@ -309,6 +409,10 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
             graph.removeVertex(snode);
         if (eadded)
             graph.removeVertex(enode);
+        if (sradded && !sadded)
+            removeEdges(swr, snode);
+        if (eradded && !eadded)
+            removeEdges(ewr, enode);
 
         lock.unlock();
         return ret;
@@ -316,7 +420,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
     @Override
     public World getWorld() {
-        return regions.keySet().stream().map(Region::getWorld).findAny().orElse(null);
+        return regions.keySet().stream().map(Region::getWorld).findFirst().orElse(null);
     }
 
     @Override
@@ -340,25 +444,20 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     }
 
     @Override
-    public Set<Location> getValidLocations(Location center, int radius) {
+    public Set<Location> getValidLocations(Location center, int range) {
         throw new RuntimeException("Not Yet implemented");
     }
 
     private Region getRegion(Location l) {
-        for (Region region : this.regions.keySet()) {
-            if (region.isReachableLocation(l))
-                return region;
-        }
-        return null;
+        return regions.keySet().stream().filter((r) -> r.isReachableLocation(l)).findFirst().orElse(null);
     }
 
     private void _removeRegion(long tic, StatusImpl<Region[]> status, RegionImpl reg) {
         status.setStatus(2);
-
         RegionWrapper rw = regions.get(reg);
         regions.remove(reg);
         if (rw != null) {
-
+            invalidate();
             int size = rw.waypoints.size();
             int i = 0;
             for (Node waypoint :
@@ -368,6 +467,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                 if (--count < 2) {
                     graph.removeVertex(waypoint);
                     waypointMap.remove(waypoint);
+                    nodeMap.remove(waypoint.getLoc());
                 } else {
                     waypointMap.put(waypoint, count);
                     rw.waypoints.forEach(w -> graph.removeEdge(waypoint, w));
@@ -377,7 +477,6 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
             }
 
             regions.put(reg, rw);
-
         }
         status.setProduct(regions.keySet().toArray(new Region[]{}));
         status.totTime = (System.currentTimeMillis() - tic);
@@ -397,37 +496,8 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     @Override
     public Set<Location> getReachableLocations() {
         if (reachableLocations.isEmpty())
-            reachableLocations = regions.keySet().stream().flatMap(r -> r.getReachableLocations().stream()).distinct().collect(Collectors.toSet());
+            reachableLocations = regions.keySet().stream().flatMap(r -> r.getReachableLocations().stream()).collect(Collectors.toSet());
         return new HashSet<>(reachableLocations);
-    }
-
-    @Override
-    public Status<Set<Location>> getIntersection(Region region) {
-        StatusImpl<Set<Location>> result = new StatusImpl<>();
-        if (sync) {
-            result.setProduct(_getIntersection(region));
-            result.setStatus(3);
-        } else {
-            result.setStatus(1);
-            new Thread(() -> {
-                result.setStatus(2);
-                result.setProduct(_getIntersection(region));
-                result.setStatus(3);
-            }).start();
-        }
-        return result;
-    }
-
-    @Override
-    public Set<Location> _getIntersection(Region region) {
-        Set<Location> common = new HashSet<>(region.getReachableLocations());
-        Location min = region.getMinCorner();
-        Location max = region.getMaxCorner();
-        Location center = new Location(getWorld(), (min.getBlockX() + max.getBlockX()) / 2.0, (min.getBlockY() + max.getBlockY()) / 2.0, (min.getBlockZ() + max.getBlockZ()) / 2.0);
-        int radius = (int) Math.floor((Math.max(max.getBlockX() - min.getBlockX(), Math.max(max.getBlockY() - min.getBlockY(), max.getBlockZ() - min.getBlockZ())) / 2.0));
-
-        common.retainAll(this.getReachableLocations(center, radius));
-        return common;
     }
 
     @Override
@@ -436,21 +506,49 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     }
 
     @Override
-    public Set<Location> getReachableLocations(Location center, int radius) {
+    public Set<Location> getReachableLocations(Location center, int range) {
         if (reachableLocationsMap.isEmpty())
             return null;
         Set<Location> result = new HashSet<>();
-        for (int y = center.getBlockY() - radius; y < center.getBlockY() + radius; y++) {
-            for (int z = center.getBlockZ() - radius; z < center.getBlockZ() + radius; z++) {
-                for (int x = center.getBlockX() - radius; x < center.getBlockX() + radius; x++) {
-                    int finalZ = z;
-                    int finalX = x;
-                    Optional.ofNullable(reachableLocationsMap.get(y))
-                            .flatMap(z_map -> Optional.ofNullable(z_map.get(finalZ)))
-                            .flatMap(x_map -> Optional.ofNullable(x_map.get(finalX)))
-                            .ifPresent(result::add);
-                }
-            }
+        for (int y = center.getBlockY() - range; y < center.getBlockY() + range; y++) {
+            Optional.ofNullable(reachableLocationsMap.get(y)).ifPresent(
+                    (z_map) -> {
+                        for (int z = center.getBlockZ() - range; z < center.getBlockZ() + range; z++) {
+                            Optional.ofNullable(z_map.get(z)).ifPresent(
+                                    (x_map) -> {
+                                        for (int x = center.getBlockX() - range; x < center.getBlockX() + range; x++) {
+                                            Optional.ofNullable(x_map.get(x))
+                                                    .ifPresent(result::add);
+                                        }
+                                    }
+                            );
+                        }
+                    }
+            );
+        }
+        return result;
+    }
+
+    @Override
+    public Set<Location> getReachableLocations(Location center, int x_range, int y_range, int z_range) {
+        if (reachableLocationsMap.isEmpty())
+            return null;
+        Set<Location> result = new HashSet<>();
+        for (int y = center.getBlockY() - y_range; y < center.getBlockY() + y_range; y++) {
+            Optional.ofNullable(reachableLocationsMap.get(y)).ifPresent(
+                    (z_map) -> {
+                        for (int z = center.getBlockZ() - z_range; z < center.getBlockZ() + z_range; z++) {
+                            Optional.ofNullable(z_map.get(z)).ifPresent(
+                                    (x_map) -> {
+                                        for (int x = center.getBlockX() - x_range; x < center.getBlockX() + x_range; x++) {
+                                            Optional.ofNullable(x_map.get(x))
+                                                    .ifPresent(result::add);
+                                        }
+                                    }
+                            );
+                        }
+                    }
+            );
         }
         return result;
     }
@@ -467,7 +565,13 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
     @Override
     public boolean isReachableLocation(Location location) {
-        return regions.keySet().stream().anyMatch(r -> r.isReachableLocation(location));
+        Map<Integer, Map<Integer, Location>> Z_map = reachableLocationsMap.get(location.getBlockY());
+        if (Z_map == null)
+            return false;
+        Map<Integer, Location> X_map = Z_map.get(location.getBlockZ());
+        if (X_map == null)
+            return false;
+        return X_map.containsKey(location.getBlockX());
     }
 
     @Override
@@ -495,9 +599,9 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                 status.setStatus(1);
                 Logger.info("Extended region " + this.getName() + " started validating");
                 _validate(tic, status);
-                Logger.info("Extended region " + this.getName() + (isValid() ? "successfully validated" : "failed validating"));
+                Logger.info("Extended region " + this.getName() + (isValid() ? " successfully validated" : " failed validating"));
             } catch (Exception ex) {
-                Logger.info("Extended region " + this.getName() + "failed validating");
+                Logger.info("Extended region " + this.getName() + " Exception while validating");
                 status.ex = ex;
                 status.setStatus(4);
             }
@@ -512,11 +616,11 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                             Logger.info("Extended region " + this.getName() + " started validating"));
                     _validate(tic, status);
                     Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
-                            Logger.info("Extended region " + this.getName() + (isValid() ? "successfully validated" : "failed validating")));
+                            Logger.info("Extended region " + this.getName() + (isValid() ? " successfully validated" : " failed validating")));
                     lock.unlock();
                 } catch (Exception ex) {
                     Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
-                            Logger.info("Extended region " + this.getName() + "failed validating"));
+                            Logger.info("Extended region " + this.getName() + " Exception while validating"));
                     status.ex = ex;
                     status.setStatus(4);
                     if (locked)
@@ -528,6 +632,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
     private void _validate(long tic, StatusImpl<Boolean> status) {
         status.setStatus(2);
+        invalidate();
         if (ESubRegions().anyMatch(r -> r == this)) {
             status.setProduct(false);
             status.totTime = (System.currentTimeMillis() - tic);
@@ -575,8 +680,15 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                 locked = true;
                 status.setStatus(2);
 
-                RegionImpl sreg = regions.keySet().stream().sorted(Comparator.comparing(Region::getLevel)).filter(r -> r.isReachableLocation(start)).findFirst().orElse(null);
-                RegionImpl ereg = regions.keySet().stream().sorted(Comparator.comparing(Region::getLevel)).filter(r -> r.isReachableLocation(end)).findFirst().orElse(null);
+                if (!isReachableLocation(start) || !isReachableLocation(end)) {
+                    status.totTime = (System.currentTimeMillis() - tic);
+                    status.setStatus(3);
+                    lock.unlock();
+                    return;
+                }
+
+                RegionImpl sreg = (RegionImpl) getRegion(start);
+                RegionImpl ereg = (RegionImpl) getRegion(end);
 
                 if (sreg == null || ereg == null) {
                     status.totTime = (System.currentTimeMillis() - tic);
@@ -599,27 +711,55 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                 RegionWrapper swr = regions.get(sreg);
                 RegionWrapper ewr = regions.get(ereg);
 
-                Node snode = new Node(start);
-                Node enode = new Node(end);
+                Location act_s = new Location(
+                        start.getWorld(),
+                        start.getBlockX() + 0.5,
+                        start.getBlockY() + 0.5,
+                        start.getBlockZ() + 0.5
+                );
+
+                Location act_e = new Location(
+                        end.getWorld(),
+                        end.getBlockX() + 0.5,
+                        end.getBlockY() + 0.5,
+                        end.getBlockZ() + 0.5
+                );
 
                 boolean sadded = false;
                 boolean eadded = false;
 
-                status.percentage = 0.01f;
-                status.setStatus(2);
+                Node snode = nodeMap.get(act_s);
 
-                if (!swr.waypoints.contains(snode)) {
-                    makeEdges(sreg, swr, snode, 1);
+                if (snode == null) {
+                    snode = new Node(act_s);
                     sadded = true;
                 }
 
+                Node enode = nodeMap.get(act_e);
+
+                if (enode == null) {
+                    enode = new Node(act_e);
+                    eadded = true;
+                }
+
+                status.percentage = 0.01f;
+                status.setStatus(2);
+
+
+                boolean sradded = false;
+                boolean eradded = false;
+
+                if (!swr.waypoints.contains(snode)) {
+                    makeEdges(sreg, swr, snode, 1);
+                    sradded = true;
+                }
 
                 status.percentage = 0.2f;
                 status.setStatus(2);
 
                 if (!ewr.waypoints.contains(enode)) {
                     makeEdges(ereg, ewr, enode, 2);
-                    eadded = true;
+                    eradded = true;
                 }
 
                 status.percentage = 0.5f;
@@ -641,6 +781,10 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     graph.removeVertex(snode);
                 if (eadded)
                     graph.removeVertex(enode);
+                if (sradded && !sadded)
+                    removeEdges(swr, snode);
+                if (eradded && !eadded)
+                    removeEdges(ewr, enode);
 
                 lock.unlock();
             } catch (Exception ex) {
@@ -651,6 +795,14 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
             }
         });
         return status;
+    }
+
+    private void removeEdges(RegionWrapper rw, Node n) {
+        rw.waypoints.remove(n);
+        rw.waypoints.forEach((w) -> {
+            graph.removeEdge(w, n);
+            graph.removeEdge(n, w);
+        });
     }
 
     @Override
@@ -664,6 +816,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
             else
                 region.invalidate();
         }
+        RegionImpl.intersectionCacheMap.clear();
     }
 
     @Override
@@ -692,7 +845,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     private static class RegionWrapper {
         Region region;
         double multiplier;
-        List<Node> waypoints = new LinkedList<>();
+        Set<Node> waypoints = new HashSet<>();
     }
 
     public ExtendedRegionImpl(String name) {

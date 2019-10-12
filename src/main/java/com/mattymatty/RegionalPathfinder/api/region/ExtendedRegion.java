@@ -5,17 +5,18 @@ import org.bukkit.Location;
 
 import javax.validation.constraints.Positive;
 import java.util.List;
+import java.util.Set;
 
 public interface ExtendedRegion extends Region {
 
     //adds a sub-region to this extended region
-    Status<Region[]> addRegion(Region region, @Positive double weightMultiplier, List<Location> excludedWayPoints);
+    Status<Region[]> addRegion(Region region, @Positive double weightMultiplier, Set<Location> excludedWayPoints);
 
     //adds a sub-region to this extended region
     Status<Region[]> addRegion(Region region, @Positive double weightMultiplier);
 
     //wrapper for backwise compatibility ( equals to addRegion( region , 1.0 ); )
-    Status<Region[]> addRegion(Region region, List<Location> excludedWayPoints);
+    Status<Region[]> addRegion(Region region, Set<Location> excludedWayPoints);
 
     //wrapper for backwise compatibility ( equals to addRegion( region , 1.0 ); )
     Status<Region[]> addRegion(Region region);

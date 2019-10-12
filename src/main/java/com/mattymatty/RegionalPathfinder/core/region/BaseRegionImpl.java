@@ -85,7 +85,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     }
 
     @Override
-    public Set<Location> getValidLocations(Location center, int radius) {
+    public Set<Location> getValidLocations(Location center, int range) {
         throw new RuntimeException("Not Yet implemented");
     }
 
@@ -99,21 +99,49 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     }
 
     @Override
-    public Set<Location> getReachableLocations(Location center, int radius) {
+    public Set<Location> getReachableLocations(Location center, int range) {
         if (loadData == null)
             return null;
         Set<Location> result = new HashSet<>();
-        for (int y = center.getBlockY() - radius; y < center.getBlockY() + radius; y++) {
-            for (int z = center.getBlockZ() - radius; z < center.getBlockZ() + radius; z++) {
-                for (int x = center.getBlockX() - radius; x < center.getBlockX() + radius; x++) {
-                    int finalZ = z;
-                    int finalX = x;
-                    Optional.ofNullable(loadData.reachableLocationsMap.get(y))
-                            .flatMap(z_map -> Optional.ofNullable(z_map.get(finalZ)))
-                            .flatMap(x_map -> Optional.ofNullable(x_map.get(finalX)))
-                            .ifPresent(result::add);
-                }
-            }
+        for (int y = center.getBlockY() - range; y < center.getBlockY() + range; y++) {
+            Optional.ofNullable(loadData.reachableLocationsMap.get(y)).ifPresent(
+                    (z_map) -> {
+                        for (int z = center.getBlockZ() - range; z < center.getBlockZ() + range; z++) {
+                            Optional.ofNullable(z_map.get(z)).ifPresent(
+                                    (x_map) -> {
+                                        for (int x = center.getBlockX() - range; x < center.getBlockX() + range; x++) {
+                                            Optional.ofNullable(x_map.get(x))
+                                                    .ifPresent(result::add);
+                                        }
+                                    }
+                            );
+                        }
+                    }
+            );
+        }
+        return result;
+    }
+
+    @Override
+    public Set<Location> getReachableLocations(Location center, int x_range, int y_range, int z_range) {
+        if (loadData == null)
+            return null;
+        Set<Location> result = new HashSet<>();
+        for (int y = center.getBlockY() - y_range; y < center.getBlockY() + y_range; y++) {
+            Optional.ofNullable(loadData.reachableLocationsMap.get(y)).ifPresent(
+                    (z_map) -> {
+                        for (int z = center.getBlockZ() - z_range; z < center.getBlockZ() + z_range; z++) {
+                            Optional.ofNullable(z_map.get(z)).ifPresent(
+                                    (x_map) -> {
+                                        for (int x = center.getBlockX() - x_range; x < center.getBlockX() + x_range; x++) {
+                                            Optional.ofNullable(x_map.get(x))
+                                                    .ifPresent(result::add);
+                                        }
+                                    }
+                            );
+                        }
+                    }
+            );
         }
         return result;
     }
@@ -233,24 +261,23 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     @Override
     public boolean isReachableLocation(Location location) {
-        boolean ret = false;
-        if (!isInRegion(location))
+        if (loadData == null)
             return false;
-        if (!isValidLocation(location))
+        if (loadData.getStatus().getValue() < LoadData.Status.EVALUATED.getValue())
             return false;
-        if (!lock.tryLock())
-            throw new AsyncExecption("Async operation still running on this region", this);
-        if (loadData != null && loadData.getStatus().getValue() > LoadData.Status.EVALUATING.getValue()) {
-            Location actual_loc = new Location(location.getWorld(), location.getBlockX(), location.getBlockY(), location.getBlockZ()).add(0.5, 0.5, 0.5);
-            Node node = loadData.getNode(actual_loc);
-            ret = loadData.getReachableGraph().containsVertex(node);
-        }
-        lock.unlock();
-        return ret;
+        Map<Integer, Map<Integer, Location>> Z_map = loadData.reachableLocationsMap.get(location.getBlockY());
+        if (Z_map == null)
+            return false;
+        Map<Integer, Location> X_map = Z_map.get(location.getBlockZ());
+        if (X_map == null)
+            return false;
+        return X_map.containsKey(location.getBlockX());
     }
 
     @Override
     public Entity setEntity(Entity entity) {
+        invalidate();
+        loadData = null;
         return this.entity = entity;
     }
 
@@ -358,6 +385,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     @Override
     public Status<Boolean> validate() {
+        invalidate();
         StatusImpl<Boolean> ret = new StatusImpl<>();
         ret.setProduct(false);
         if (loadData != null)
@@ -379,6 +407,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     @Override
     public Status<Location[]> load() {
+        invalidate();
         StatusImpl<Location[]> ret = new StatusImpl<>();
         if (loadData != null && loadData.lowerCorner == lowerCorner && loadData.upperCorner == upperCorner) {
             loader.load(loadData, ret);
@@ -392,6 +421,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     @Override
     public Status<Location> evaluate() {
+        invalidate();
         StatusImpl<Location> ret = new StatusImpl<>();
         if (loadData != null) {
             loadData.samplePoint = samplepoint;
@@ -421,7 +451,8 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     @Override
     public void invalidate() {
-        loadData.invalidate();
+        if (loadData != null)
+            loadData.invalidate();
         for (WeakReference<RegionImpl> reference :
                 backreferences) {
             RegionImpl region = reference.get();
@@ -430,6 +461,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
             else
                 region.invalidate();
         }
+        RegionImpl.intersectionCacheMap.clear();
     }
 
     @Override
