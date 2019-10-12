@@ -216,7 +216,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         Map<Node, Set<RegionImpl>> actIntersectionMap = intersectionMap.entrySet().stream().filter((e) -> {
             if (!excludedWaypoints.contains(e.getKey().getLoc()))
                 return true;
-            if (e.getValue().stream().anyMatch((r) -> (regionCount.get(r) - 1) == 0))
+            if (e.getValue().stream().anyMatch((r) -> (regionCount.get(r)) == 1))
                 return true;
             e.getValue().forEach((r) -> regionCount.put(r, regionCount.get(r) - 1));
             return false;
@@ -250,12 +250,10 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     }
 
     private void makeEdges(RegionImpl region, RegionWrapper rw, Node n, int direction) {
-        if (!rw.waypoints.contains(n)) {
             if (!graph.containsVertex(n)) {
                 graph.addVertex(n);
-                nodeMap.put(n.getLoc(), n);
             }
-            rw.waypoints.forEach(w -> {
+        rw.waypoints.stream().filter(w -> !w.equals(n)).forEach(w -> {
                 Path go = null, ret = null;
                 if (direction == 0 || direction == 1)
                     go = region._getPath(n.getLoc(), w.getLoc());
@@ -278,7 +276,6 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     graph.setEdgeWeight(retE, ret.getWeight() * rw.multiplier);
                 }
             });
-        }
     }
 
     @Override
