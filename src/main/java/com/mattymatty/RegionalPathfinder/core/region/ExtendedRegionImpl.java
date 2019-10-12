@@ -72,14 +72,14 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         return addRegion(region, weightMultiplier, new HashSet<>());
     }
 
-    private void addWaypoints(RegionWrapper rw, Set<Location> waypoints) {
-        waypoints.stream().filter((n) -> !rw.waypoints.contains(nodeMap.computeIfAbsent(n, Node::new))).forEach(n -> {
-            Integer count = waypointMap.getOrDefault(nodeMap.computeIfAbsent(n, Node::new), null);
+    private void addWaypoints(RegionWrapper rw, Set<Node> waypoints) {
+        waypoints.stream().filter((n) -> !rw.waypoints.contains(n)).forEach(n -> {
+            Integer count = waypointMap.getOrDefault(n, null);
             if (count == null)
                 count = 0;
-            waypointMap.put(nodeMap.computeIfAbsent(n, Node::new), ++count);
+            waypointMap.put(n, ++count);
         });
-        rw.waypoints.addAll(waypoints.stream().map((n) -> nodeMap.computeIfAbsent(n, Node::new)).collect(Collectors.toSet()));
+        rw.waypoints.addAll(waypoints);
     }
 
     private void addWaypoint(RegionWrapper rw, Node waypoint) {
@@ -199,39 +199,38 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         rw.region = reg;
         rw.multiplier = multiplier;
 
-        Map<RegionImpl, Integer> regionCount = new HashMap<>();
-        Map<Node, Set<RegionImpl>> intersectionMap = new HashMap<>();
-        this._getIntersection(reg).stream().map(l -> nodeMap.computeIfAbsent(l, Node::new)).forEach(
-                (n) -> regions.keySet().stream().filter((r) -> r.isReachableLocation(n.getLoc())).forEach(
+        Map<RegionImpl, Set<Location>> intersectionMap = new HashMap<>();
+
+        this._getIntersection(reg)
+                .forEach(
+                        (l) -> regions.keySet().stream().filter((r) -> r.isReachableLocation(l)).forEach(
                         (r) -> {
-                            intersectionMap.computeIfAbsent(n, (k) -> new HashSet<>()).add(r);
-                            int count = regionCount.computeIfAbsent(r, (k) -> 0);
-                            regionCount.put(r, ++count);
+                            intersectionMap.computeIfAbsent(r, (k) -> new HashSet<>()).add(l);
                         }
                 )
         );
 
         invalidate();
 
-        Map<Node, Set<RegionImpl>> actIntersectionMap = intersectionMap.entrySet().stream().filter((e) -> {
-            if (!excludedWaypoints.contains(e.getKey().getLoc()))
-                return true;
-            if (e.getValue().stream().anyMatch((r) -> (regionCount.get(r)) == 1))
-                return true;
-            e.getValue().forEach((r) -> regionCount.put(r, regionCount.get(r) - 1));
-            return false;
-        }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        int size = intersectionMap.size();
+        int i = 0;
+        for (RegionImpl act : intersectionMap.keySet()) {
+            i++;
+            RegionWrapper actrw = regions.get(act);
+            Set<Node> waypoints = intersectionMap.get(act).stream().filter(
+                    l -> !excludedWaypoints.contains(l)
+            ).map((l) -> nodeMap.computeIfAbsent(l, Node::new)).collect(Collectors.toSet());
+            waypoints.add(nodeMap.computeIfAbsent(intersectionMap.get(act).toArray(new Location[]{})[0], Node::new));
 
-        for (Node node : actIntersectionMap.keySet()) {
-            Set<RegionImpl> border_regions = intersectionMap.get(node);
-            for (RegionImpl act : border_regions) {
-                RegionWrapper actrw = regions.get(act);
+            waypoints.forEach(w -> {
+                makeEdges(act, actrw, w);
+                makeEdges(reg, rw, w);
+            });
 
-                makeEdges(act, actrw, node);
-                makeEdges(reg, rw, node);
-                addWaypoint(actrw, node);
-                addWaypoint(rw, node);
-            }
+            addWaypoints(actrw, waypoints);
+            addWaypoints(rw, waypoints);
+            status.percentage = (float) i / size;
+            status.setStatus(2);
         }
 
         regions.put(reg, rw);
