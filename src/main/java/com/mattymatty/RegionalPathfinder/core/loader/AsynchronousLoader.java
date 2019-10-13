@@ -222,6 +222,7 @@ public class AsynchronousLoader implements Loader {
                 data.reachableGraph = scs;
                 data.shortestPath = new DijkstraShortestPath<>(data.getReachableGraph());
 
+                data.reachableLocationsMap.clear();
                 scs.vertexSet().stream().map(Node::getLoc).forEach(l -> {
                     Map<Integer, Map<Integer, Location>> z_map = data.reachableLocationsMap.computeIfAbsent(l.getBlockY(), k -> new HashMap<>());
                     Map<Integer, Location> x_set = z_map.computeIfAbsent(l.getBlockZ(), k -> new HashMap<>());

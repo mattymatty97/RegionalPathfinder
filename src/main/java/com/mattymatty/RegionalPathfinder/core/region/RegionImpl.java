@@ -42,18 +42,18 @@ public interface RegionImpl extends Region {
         if (min_1 == null || max_1 == null)
             return new HashSet<>();
         Location center_1 = new Location(getWorld(), (min_1.getBlockX() + max_1.getBlockX()) / 2.0, (min_1.getBlockY() + max_1.getBlockY()) / 2.0, (min_1.getBlockZ() + max_1.getBlockZ()) / 2.0);
-        int x_range_1 = (int) Math.floor((max_1.getBlockX() - min_1.getBlockX()) / 2.0);
-        int y_range_1 = (int) Math.floor((max_1.getBlockY() - min_1.getBlockY()) / 2.0);
-        int z_range_1 = (int) Math.floor((max_1.getBlockZ() - min_1.getBlockZ()) / 2.0);
+        int x_range_1 = (int) Math.ceil((max_1.getBlockX() - min_1.getBlockX()) / 2.0) + 1;
+        int y_range_1 = (int) Math.ceil((max_1.getBlockY() - min_1.getBlockY()) / 2.0) + 1;
+        int z_range_1 = (int) Math.ceil((max_1.getBlockZ() - min_1.getBlockZ()) / 2.0) + 1;
         int medium_range_1 = (x_range_1 + y_range_1 + z_range_1) / 3;
         Location min_2 = this.getMinCorner();
         Location max_2 = this.getMaxCorner();
         if (min_2 == null || max_2 == null)
             return new HashSet<>();
         Location center_2 = new Location(getWorld(), (min_2.getBlockX() + max_2.getBlockX()) / 2.0, (min_2.getBlockY() + max_2.getBlockY()) / 2.0, (min_2.getBlockZ() + max_2.getBlockZ()) / 2.0);
-        int x_range_2 = (int) Math.floor((max_2.getBlockX() - min_2.getBlockX()) / 2.0);
-        int y_range_2 = (int) Math.floor((max_2.getBlockY() - min_2.getBlockY()) / 2.0);
-        int z_range_2 = (int) Math.floor((max_2.getBlockZ() - min_2.getBlockZ()) / 2.0);
+        int x_range_2 = (int) Math.ceil((max_2.getBlockX() - min_2.getBlockX()) / 2.0) + 1;
+        int y_range_2 = (int) Math.ceil((max_2.getBlockY() - min_2.getBlockY()) / 2.0) + 1;
+        int z_range_2 = (int) Math.ceil((max_2.getBlockZ() - min_2.getBlockZ()) / 2.0) + 1;
         int medium_range_2 = (x_range_2 + y_range_2 + z_range_2) / 3;
 
         if (medium_range_1 > medium_range_2) {

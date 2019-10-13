@@ -74,6 +74,9 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
     private void addWaypoints(RegionWrapper rw, Set<Node> waypoints) {
         waypoints.stream().filter((n) -> !rw.waypoints.contains(n)).forEach(n -> {
+            if (!graph.containsVertex(n)) {
+                graph.addVertex(n);
+            }
             Integer count = waypointMap.getOrDefault(n, null);
             if (count == null)
                 count = 0;
@@ -117,7 +120,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
             }
         } else {
             Set<Location> finalExcludedWaypoints = excludedWaypoints;
-            Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(), () -> {
+            new Thread(() -> {
                 boolean locked = false;
                 try {
                     status.setStatus(1);
@@ -137,61 +140,10 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     if (locked)
                         lock.unlock();
                 }
-            });
+            }).start();
         }
         return status;
     }
-
-    /*
-    private void _ogaddRegion(long tic, StatusImpl<Region[]> status, RegionImpl reg, double multiplier, Set<Location> excludedWaypoints) {
-        status.setStatus(2);
-
-        RegionWrapper rw = new RegionWrapper();
-        rw.region = reg;
-        rw.multiplier = multiplier;
-
-        int size = regions.size();
-        int i = 0;
-        for (RegionImpl act : regions.keySet()) {
-            i++;
-            RegionWrapper actrw = regions.get(act);
-            Map<Region, Long> Regions = act._getIntersection(reg).stream().map(this::getRegion).collect(Collectors.groupingBy((Region r) -> r, Collectors.counting()));
-            Set<Node> waypoints = act._getIntersection(reg).stream().filter(
-                    (l) -> {
-                        if (excludedWaypoints.contains(l)) {
-                            Region loc_r = getRegion(l);
-                            long count = Regions.get(loc_r);
-                            if (count > 1) {
-                                Regions.put(loc_r, --count);
-                                return false;
-                            }
-                        }
-                        return true;
-                    }
-            ).map((l) -> nodeMap.computeIfAbsent(l, Node::new)).collect(Collectors.toSet());
-            waypoints.forEach(w -> {
-                if (!actrw.waypoints.contains(w))
-                    makeEdges(act, actrw, w);
-                if (!rw.waypoints.contains(w))
-                    makeEdges(reg, rw, w);
-            });
-            addWaypoints(actrw, waypoints.stream().filter((n) -> act.isReachableLocation(n.getLoc())).collect(Collectors.toSet()));
-            addWaypoints(rw, waypoints.stream().filter((n) -> reg.isReachableLocation(n.getLoc())).collect(Collectors.toSet()));
-            status.percentage = (float) i / size;
-            status.setStatus(2);
-        }
-
-        regions.put(reg, rw);
-        reg.referencer(this);
-
-        reg.getReachableLocations().forEach(this::computeLocations);
-
-        reachableLocations.addAll(reg.getReachableLocations());
-        status.setProduct(regions.keySet().toArray(new Region[]{}));
-        status.totTime = (System.currentTimeMillis() - tic);
-        status.setStatus(3);
-
-    }*/
 
     private void _addRegion(long tic, StatusImpl<Region[]> status, RegionImpl reg, double multiplier, Set<Location> excludedWaypoints) {
         status.setStatus(2);
@@ -219,8 +171,9 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
             RegionWrapper actrw = regions.get(act);
             Set<Node> waypoints = intersectionMap.get(act).stream().filter(
                     l -> !excludedWaypoints.contains(l)
-            ).map((l) -> nodeMap.computeIfAbsent(l, Node::new)).collect(Collectors.toSet());
-            waypoints.add(nodeMap.computeIfAbsent(intersectionMap.get(act).toArray(new Location[]{})[0], Node::new));
+            ).map(Node::new).collect(Collectors.toSet());
+            waypoints.add(new Node(intersectionMap.get(act).toArray(new Location[]{})[0]));
+
 
             waypoints.forEach(w -> {
                 makeEdges(act, actrw, w);
@@ -229,6 +182,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
             addWaypoints(actrw, waypoints);
             addWaypoints(rw, waypoints);
+
             status.percentage = (float) i / size;
             status.setStatus(2);
         }
@@ -249,9 +203,9 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     }
 
     private void makeEdges(RegionImpl region, RegionWrapper rw, Node n, int direction) {
-            if (!graph.containsVertex(n)) {
-                graph.addVertex(n);
-            }
+        if (!graph.containsVertex(n)) {
+            graph.addVertex(n);
+        }
         rw.waypoints.stream().filter(w -> !w.equals(n)).forEach(w -> {
                 Path go = null, ret = null;
                 if (direction == 0 || direction == 1)
@@ -294,7 +248,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                 status.setStatus(4);
             }
         } else
-            Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(), () -> {
+            new Thread(() -> {
                 boolean locked = false;
                 try {
                     status.setStatus(1);
@@ -315,7 +269,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     if (locked)
                         lock.unlock();
                 }
-            });
+            }).start();
         return status;
     }
 
@@ -630,12 +584,26 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     private void _validate(long tic, StatusImpl<Boolean> status) {
         status.setStatus(2);
         invalidate();
+        if (regions.size() == 0) {
+            status.setProduct(false);
+            status.totTime = (System.currentTimeMillis() - tic);
+            status.setStatus(3);
+            return;
+        }
         if (ESubRegions().anyMatch(r -> r == this)) {
             status.setProduct(false);
             status.totTime = (System.currentTimeMillis() - tic);
             status.setStatus(3);
             return;
         }
+
+        if (regions.size() == 2) {
+            status.setProduct(getIntersections().size() > 0);
+            status.totTime = (System.currentTimeMillis() - tic);
+            status.setStatus(3);
+            return;
+        }
+
         StrongConnectivityAlgorithm<Node, Edge> scAlg =
                 new KosarajuStrongConnectivityInspector<>(graph);
         status.setProduct(scAlg.isStronglyConnected());
