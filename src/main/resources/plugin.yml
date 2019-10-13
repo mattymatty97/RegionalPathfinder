@@ -1,8 +1,8 @@
 name: RegionalPathfinder
 main: com.mattymatty.RegionalPathfinder.RegionalPathfinder
-version: 0.8.5-Test1
+version: 0.8.5-Test3
 author: The__Matty
-api-version: 1.13
+api-version: 1.13.2
 load: STARTUP
 
 commands:

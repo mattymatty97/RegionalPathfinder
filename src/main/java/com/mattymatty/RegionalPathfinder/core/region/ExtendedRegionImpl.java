@@ -155,9 +155,9 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
         this._getIntersection(reg)
                 .forEach(
-                        (l) -> regions.keySet().stream().filter((r) -> r.isReachableLocation(l)).forEach(
+                        (l) -> regions.keySet().stream().filter((r) -> r.isReachableLocation(l.clone())).forEach(
                         (r) -> {
-                            intersectionMap.computeIfAbsent(r, (k) -> new HashSet<>()).add(l);
+                            intersectionMap.computeIfAbsent(r, (k) -> new HashSet<>()).add(l.clone());
                         }
                 )
         );
@@ -169,7 +169,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         for (RegionImpl act : intersectionMap.keySet()) {
             i++;
             RegionWrapper actrw = regions.get(act);
-            Set<Node> waypoints = intersectionMap.get(act).stream().filter(
+            Set<Node> waypoints = intersectionMap.get(act).stream().map(Location::clone).filter(
                     l -> !excludedWaypoints.contains(l)
             ).map(Node::new).collect(Collectors.toSet());
             waypoints.add(new Node(intersectionMap.get(act).toArray(new Location[]{})[0]));
@@ -209,9 +209,9 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         rw.waypoints.stream().filter(w -> !w.equals(n)).forEach(w -> {
                 Path go = null, ret = null;
                 if (direction == 0 || direction == 1)
-                    go = region._getPath(n.getLoc(), w.getLoc());
+                    go = region._getPath(n.getLoc().clone(), w.getLoc().clone());
                 if (direction == 0 || direction == 2)
-                    ret = region._getPath(w.getLoc(), n.getLoc());
+                    ret = region._getPath(w.getLoc().clone(), n.getLoc().clone());
 
                 if (direction == 0 || direction == 1) {
                     Edge goE = graph.addEdge(n, w);
@@ -257,7 +257,6 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
                             Logger.info("Removing region " + region.getName() + " from " + this.getName()));
                     _removeRegion(tic, status, reg);
-
                     Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () ->
                             Logger.info("Successfully removed region " + region.getName() + " from " + this.getName()));
                     lock.unlock();
@@ -297,11 +296,11 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
             return null;
         }
 
-        RegionImpl sreg = (RegionImpl) getRegion(start);
-        RegionImpl ereg = (RegionImpl) getRegion(end);
+        RegionImpl sreg = (RegionImpl) getRegion(start.clone());
+        RegionImpl ereg = (RegionImpl) getRegion(end.clone());
 
         if (sreg == ereg)
-            return sreg._getPath(start, end);
+            return sreg._getPath(start.clone(), end.clone());
 
         RegionWrapper swr = regions.get(sreg);
         RegionWrapper ewr = regions.get(ereg);
@@ -326,14 +325,14 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         Node snode = nodeMap.get(act_s);
 
         if (snode == null) {
-            snode = new Node(act_s);
+            snode = new Node(act_s.clone());
             sadded = true;
         }
 
         Node enode = nodeMap.get(act_e);
 
         if (enode == null) {
-            enode = new Node(act_e);
+            enode = new Node(act_e.clone());
             eadded = true;
         }
 
@@ -354,7 +353,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
         Stream<Location> locationStream = path.getEdgeList().stream().map(Edge::getPath).flatMap(l -> l.stream().skip(1));
 
-        Path ret = new Path(Stream.concat(Stream.of(start), locationStream).collect(Collectors.toList()), path.getWeight());
+        Path ret = new Path(Stream.concat(Stream.of(start), locationStream).map(Location::clone).collect(Collectors.toList()), path.getWeight());
 
         if (sadded)
             graph.removeVertex(snode);
@@ -645,37 +644,6 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                 locked = true;
                 status.setStatus(2);
 
-                if (!isReachableLocation(start) || !isReachableLocation(end)) {
-                    status.totTime = (System.currentTimeMillis() - tic);
-                    status.setStatus(3);
-                    lock.unlock();
-                    return;
-                }
-
-                RegionImpl sreg = (RegionImpl) getRegion(start);
-                RegionImpl ereg = (RegionImpl) getRegion(end);
-
-                if (sreg == null || ereg == null) {
-                    status.totTime = (System.currentTimeMillis() - tic);
-                    status.setStatus(3);
-                    lock.unlock();
-                    return;
-                }
-
-                status.percentage = 0.001f;
-                status.setStatus(2);
-
-                if (sreg == ereg) {
-                    status.setProduct(sreg._getPath(start, end));
-                    status.totTime = (System.currentTimeMillis() - tic);
-                    status.setStatus(3);
-                    lock.unlock();
-                    return;
-                }
-
-                RegionWrapper swr = regions.get(sreg);
-                RegionWrapper ewr = regions.get(ereg);
-
                 Location act_s = new Location(
                         start.getWorld(),
                         start.getBlockX() + 0.5,
@@ -690,20 +658,53 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                         end.getBlockZ() + 0.5
                 );
 
+                if (!isReachableLocation(act_s.clone()) || !isReachableLocation(act_e.clone())) {
+                    status.totTime = (System.currentTimeMillis() - tic);
+                    status.setStatus(3);
+                    lock.unlock();
+                    return;
+                }
+
+                RegionImpl sreg = (RegionImpl) getRegion(act_s.clone());
+                RegionImpl ereg = (RegionImpl) getRegion(act_e.clone());
+
+                if (sreg == null || ereg == null) {
+                    status.totTime = (System.currentTimeMillis() - tic);
+                    status.setStatus(3);
+                    lock.unlock();
+                    return;
+                }
+
+                status.percentage = 0.001f;
+                status.setStatus(2);
+
+                if (sreg == ereg) {
+                    status.setProduct(sreg._getPath(start.clone(), end.clone()));
+                    status.totTime = (System.currentTimeMillis() - tic);
+                    status.setStatus(3);
+                    lock.unlock();
+                    return;
+                }
+
+                RegionWrapper swr = regions.get(sreg);
+                RegionWrapper ewr = regions.get(ereg);
+
+
+
                 boolean sadded = false;
                 boolean eadded = false;
 
                 Node snode = nodeMap.get(act_s);
 
                 if (snode == null) {
-                    snode = new Node(act_s);
+                    snode = new Node(act_s.clone());
                     sadded = true;
                 }
 
                 Node enode = nodeMap.get(act_e);
 
                 if (enode == null) {
-                    enode = new Node(act_e);
+                    enode = new Node(act_e.clone());
                     eadded = true;
                 }
 
@@ -736,7 +737,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
                 Stream<Location> locationStream = path.getEdgeList().stream().map(Edge::getPath).flatMap(l -> l.stream().skip(1));
 
-                Path ret = new Path(Stream.concat(Stream.of(start), locationStream).collect(Collectors.toList()), path.getWeight());
+                Path ret = new Path(Stream.concat(Stream.of(start), locationStream).map(Location::clone).collect(Collectors.toList()), path.getWeight());
 
                 status.totTime = (System.currentTimeMillis() - tic);
                 status.setProduct(ret);

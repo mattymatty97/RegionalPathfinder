@@ -41,7 +41,7 @@ public interface Entity {
         if (Math.abs(dy) == 0) {
             result += cost.getDefaultMovement();
         } else {
-            if (isStairMovement(source, dest)) {
+            if (isStairMovement(source.clone(), dest.clone())) {
                 result += cost.getStair_slab();
             } else {
                 result += cost.getJump();

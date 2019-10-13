@@ -302,7 +302,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
         } catch (Exception ignored) {
         }
 
-        return (path != null) ? new Path(path.getVertexList().stream().map(Node::getLoc).collect(Collectors.toList()), path.getWeight()) : null;
+        return (path != null) ? new Path(path.getVertexList().stream().map(Node::getLoc).map(Location::clone).collect(Collectors.toList()), path.getWeight()) : null;
     }
 
     @Override
@@ -360,7 +360,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
                     path = getNodeEdgeGraphPath(sNode, eNode);
 
                     status.totTime = (System.currentTimeMillis() - tic);
-                    status.setProduct((path != null) ? new Path(path.getVertexList().stream().map(Node::getLoc).collect(Collectors.toList()), path.getWeight()) : null);
+                    status.setProduct((path != null) ? new Path(path.getVertexList().stream().map(Node::getLoc).map(Location::clone).collect(Collectors.toList()), path.getWeight()) : null);
 
                     long toc = System.currentTimeMillis();
                     Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> {
