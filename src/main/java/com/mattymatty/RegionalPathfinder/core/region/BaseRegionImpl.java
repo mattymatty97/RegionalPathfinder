@@ -309,6 +309,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     public Status<Path> getPath(Location start, Location end) {
         StatusImpl<Path> status = new StatusImpl<>();
         new Thread(() -> {
+            RegionalPathfinder.getInstance().runningThreads.add(Thread.currentThread());
             boolean locked = false;
             long tic = System.currentTimeMillis();
             try {
@@ -348,6 +349,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
                         status.totTime = (System.currentTimeMillis() - tic);
                         status.setStatus(3);
                         lock.unlock();
+                        RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                         return;
                     }
 
@@ -379,6 +381,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
                     lock.unlock();
                 status.setStatus(4);
             }
+            RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
         }).start();
         return status;
     }

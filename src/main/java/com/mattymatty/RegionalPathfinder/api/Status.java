@@ -1,5 +1,7 @@
 package com.mattymatty.RegionalPathfinder.api;
 
+import org.bukkit.plugin.Plugin;
+
 import java.util.function.Consumer;
 
 public interface Status<T> {
@@ -20,6 +22,8 @@ public interface Status<T> {
     float getPercentage();
 
     T getProduct();
+
+    Plugin setPlugin(Plugin plugin);
 
     Status<T> setOnSchedule(Runnable onSchedule);
     Status<T> setOnSyncSchedule(Runnable onSyncSchedule);

@@ -10,11 +10,9 @@ import com.mattymatty.RegionalPathfinder.core.region.ExtendedRegionImpl;
 import com.mattymatty.RegionalPathfinder.core.region.RegionImpl;
 import com.mattymatty.RegionalPathfinder.exeptions.InvalidNameException;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.logging.Level;
 
 @SuppressWarnings({"WeakerAccess", "UnusedReturnValue"})
@@ -36,9 +34,16 @@ public class RegionalPathfinder extends JavaPlugin {
         saveDefaultConfig();
     }
 
+    public Set<Thread> runningThreads = new HashSet<>();
+    public Set<BukkitTask> runningTasks = new HashSet<>();
+
     @Override
     public void onDisable() {
         super.onDisable();
+
+        runningThreads.forEach(Thread::interrupt);
+        runningTasks.forEach(BukkitTask::cancel);
+
     }
 
     @Override

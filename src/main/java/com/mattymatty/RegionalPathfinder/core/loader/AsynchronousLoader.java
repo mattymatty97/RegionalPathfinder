@@ -27,7 +27,8 @@ public class AsynchronousLoader implements Loader {
     //getting the valid locations inside the region
     @Override
     public void load(LoadData data, StatusImpl<Location[]> status) {
-        Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(),() -> {
+        new Thread(() -> {
+            RegionalPathfinder.getInstance().runningThreads.add(Thread.currentThread());
             boolean locked = false;
             long tic = System.currentTimeMillis();
             try {
@@ -53,11 +54,15 @@ public class AsynchronousLoader implements Loader {
                                     _load(i, count, data, status, tmp);
                                 },0,tick_skip);
 
+                RegionalPathfinder.getInstance().runningTasks.add(looper);
+
                 tmp.acquire();
                 looper.cancel();
+                RegionalPathfinder.getInstance().runningTasks.remove(looper);
 
                 if(status.hasException()) {
                     data.region.lock.unlock();
+                    RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     return;
                 }
 
@@ -96,7 +101,8 @@ public class AsynchronousLoader implements Loader {
                     data.region.lock.unlock();
                 status.setStatus(4);
             }
-        });
+            RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
+        }).start();
     }
 
     private void _load(AtomicInteger start_i, AtomicInteger count, LoadData data, StatusImpl<Location[]> status, Semaphore tmp) {
@@ -148,21 +154,26 @@ public class AsynchronousLoader implements Loader {
     //extracting the reachable locations and adding them to the graph
     @Override
     public void evaluate(LoadData data, StatusImpl<Location> status) {
-        Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(),() -> {
+        new Thread(() -> {
+            RegionalPathfinder.getInstance().runningThreads.add(Thread.currentThread());
             boolean locked = false;
             long tic = System.currentTimeMillis();
             long toc;
             try {
-                if (data.status.getValue() < LoadData.Status.LOADED.getValue())
+                if (data.status.getValue() < LoadData.Status.LOADED.getValue()) {
+                    RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     throw new LoaderException("Region not loaded", data.region);
+                }
                 status.setStatus(1);
                 data.region.lock.lockInterruptibly();
                 locked = true;
                 status.setStatus(2);
                 if (data.samplePoint.getWorld() != data.upperCorner.getWorld()) {
+                    RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     throw new RegionException("samplepoint is not in the world", data.region);
                 }
                 if (!data.region.getValidLocations().contains(data.samplePoint)) {
+                    RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     throw new RegionException("samplepoint is not in the region", data.region);
                 }
                 data.status = LoadData.Status.EVALUATING;
@@ -184,11 +195,14 @@ public class AsynchronousLoader implements Loader {
                     Bukkit.getScheduler().runTaskTimer(RegionalPathfinder.getInstance(),
                             () -> _evaluate(data, queue, status, tmp),0,tick_skip);
 
+                RegionalPathfinder.getInstance().runningTasks.add(looper);
                 tmp.acquire();
                 looper.cancel();
+                RegionalPathfinder.getInstance().runningTasks.remove(looper);
 
                 if(status.hasException()){
                     data.region.lock.unlock();
+                    RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     return;
                 }
 
@@ -216,6 +230,7 @@ public class AsynchronousLoader implements Loader {
                         Logger.fine("server got halted for: " + status.syncTime + " ms");
                         Logger.fine("total compute time: " + status.totTime + " ms");
                     });
+                    RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     return;
                 }
 
@@ -250,6 +265,7 @@ public class AsynchronousLoader implements Loader {
                     data.region.lock.unlock();
                 status.setStatus(4);
             }
+            RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
         });
     }
 
@@ -318,13 +334,16 @@ public class AsynchronousLoader implements Loader {
     @Override
     public void validate(LoadData data, StatusImpl<Boolean> status) {
         status.setProduct(false);
-        Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(),() -> {
+        new Thread(() -> {
+            RegionalPathfinder.getInstance().runningThreads.add(Thread.currentThread());
             boolean locked = false;
             long tic = System.currentTimeMillis();
             long toc;
             try {
-                if (data.status.getValue() < LoadData.Status.EVALUATED.getValue())
+                if (data.status.getValue() < LoadData.Status.EVALUATED.getValue()) {
+                    RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     throw new LoaderException("Region is not evaluated", data.region);
+                }
 
                 status.setStatus(1);
                 data.region.lock.lockInterruptibly();
@@ -348,11 +367,14 @@ public class AsynchronousLoader implements Loader {
                     Bukkit.getScheduler().runTaskTimer(RegionalPathfinder.getInstance(),
                             () -> _validate(nodeQueue, data, status, tmp),0,tick_skip);
 
+                RegionalPathfinder.getInstance().runningTasks.add(looper);
                 tmp.acquire();
                 looper.cancel();
+                RegionalPathfinder.getInstance().runningTasks.add(looper);
 
                 if(status.hasException()){
                     data.region.lock.unlock();
+                    RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     return;
                 }
 
@@ -382,6 +404,7 @@ public class AsynchronousLoader implements Loader {
                     data.region.lock.unlock();
                 status.setStatus(4);
             }
+            RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
         });
     }
 

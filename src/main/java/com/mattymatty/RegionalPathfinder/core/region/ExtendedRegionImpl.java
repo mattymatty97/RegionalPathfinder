@@ -122,6 +122,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
             Set<Location> finalExcludedWaypoints = excludedWaypoints;
             new Thread(() -> {
                 boolean locked = false;
+                RegionalPathfinder.getInstance().runningThreads.add(Thread.currentThread());
                 try {
                     status.setStatus(1);
                     lock.lockInterruptibly();
@@ -140,6 +141,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     if (locked)
                         lock.unlock();
                 }
+                RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
             }).start();
         }
         return status;
@@ -250,6 +252,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
         } else
             new Thread(() -> {
                 boolean locked = false;
+                RegionalPathfinder.getInstance().runningThreads.add(Thread.currentThread());
                 try {
                     status.setStatus(1);
                     lock.lockInterruptibly();
@@ -268,6 +271,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     if (locked)
                         lock.unlock();
                 }
+                RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
             }).start();
         return status;
     }
@@ -629,7 +633,8 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     public Status<Path> getPath(Location start, Location end) {
         long tic = System.currentTimeMillis();
         StatusImpl<Path> status = new StatusImpl<>();
-        Bukkit.getScheduler().runTaskAsynchronously(RegionalPathfinder.getInstance(), () -> {
+        new Thread(() -> {
+            RegionalPathfinder.getInstance().runningThreads.add(Thread.currentThread());
             status.setStatus(1);
             boolean locked = false;
             try {
@@ -637,6 +642,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     status.totTime = (System.currentTimeMillis() - tic);
                     status.ex = new RegionException("Region is not Valid", this);
                     status.setStatus(4);
+                    RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     return;
                 }
                 status.setStatus(1);
@@ -662,6 +668,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     status.totTime = (System.currentTimeMillis() - tic);
                     status.setStatus(3);
                     lock.unlock();
+                    RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     return;
                 }
 
@@ -672,6 +679,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     status.totTime = (System.currentTimeMillis() - tic);
                     status.setStatus(3);
                     lock.unlock();
+                    RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     return;
                 }
 
@@ -683,6 +691,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     status.totTime = (System.currentTimeMillis() - tic);
                     status.setStatus(3);
                     lock.unlock();
+                    RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     return;
                 }
 
@@ -759,7 +768,8 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                 if (locked)
                     lock.unlock();
             }
-        });
+            RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
+        }).start();
         return status;
     }
 

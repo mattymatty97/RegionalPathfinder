@@ -3,6 +3,7 @@ package com.mattymatty.RegionalPathfinder.core;
 import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.api.Status;
 import org.bukkit.Bukkit;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.lang.ref.SoftReference;
@@ -132,19 +133,36 @@ public class StatusImpl<T> implements Status<T> {
                         } else if (this.isDone()) {
                             if (this.onDone != null)
                                 this.onDone.accept(product.get());
+                            RegionalPathfinder.getInstance().runningThreads.remove(eventThread);
                             return;
                         } else if (this.hasException()) {
                             if (this.onException != null)
                                 this.onException.accept(ex);
+                            RegionalPathfinder.getInstance().runningThreads.remove(eventThread);
                             return;
                         }
                     }
                 } catch (InterruptedException ignored) {
                 }
             });
+            RegionalPathfinder.getInstance().runningThreads.add(eventThread);
+
             this.syncronousLooper = Bukkit.getScheduler().runTaskTimer(RegionalPathfinder.getInstance(), this::syncRun, 1, 1);
+
+            RegionalPathfinder.getInstance().runningTasks.add(syncronousLooper);
             this.eventThread.start();
         }
+    }
+
+    public Plugin setPlugin(Plugin plugin) {
+        if (!sync) {
+
+            RegionalPathfinder.getInstance().runningTasks.remove(syncronousLooper);
+            this.syncronousLooper.cancel();
+            this.syncronousLooper = Bukkit.getScheduler().runTaskTimer(plugin, this::syncRun, 1, 1);
+            RegionalPathfinder.getInstance().runningTasks.add(syncronousLooper);
+        }
+        return plugin;
     }
 
     @Override
@@ -204,8 +222,10 @@ public class StatusImpl<T> implements Status<T> {
 
     private void syncRun() {
         if (stop) {
-            if (this.syncronousLooper != null)
+            if (this.syncronousLooper != null) {
                 this.syncronousLooper.cancel();
+                RegionalPathfinder.getInstance().runningTasks.remove(syncronousLooper);
+            }
             return;
         }
 
