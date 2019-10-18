@@ -607,6 +607,13 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
             return;
         }
 
+        if (getUnconnectedRegions().size() > 0) {
+            status.setProduct(false);
+            status.totTime = (System.currentTimeMillis() - tic);
+            status.setStatus(3);
+            return;
+        }
+
         StrongConnectivityAlgorithm<Node, Edge> scAlg =
                 new KosarajuStrongConnectivityInspector<>(graph);
         status.setProduct(scAlg.isStronglyConnected());
