@@ -7,11 +7,12 @@ import org.bukkit.Location;
 import org.jgrapht.Graph;
 import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
 
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
 
 public class LoadData {
-    public final BaseRegionImpl region;
+    public final WeakReference<BaseRegionImpl> region;
     //data from Region
     public Location upperCorner;
     public Location lowerCorner;
@@ -28,7 +29,7 @@ public class LoadData {
     public final Map<Integer, Map<Integer, Map<Integer, Location>>> reachableLocationsMap = new HashMap<>();
 
     public LoadData(BaseRegionImpl region, Location upperCorner, Location lowerCorner) {
-        this.region = region;
+        this.region = new WeakReference<>(region);
         this.upperCorner = upperCorner;
         this.lowerCorner = lowerCorner;
         this.x_size = upperCorner.getBlockX() - lowerCorner.getBlockX();
@@ -36,6 +37,12 @@ public class LoadData {
         this.z_size = upperCorner.getBlockZ() - lowerCorner.getBlockZ();
         this.status = null;
         this.nodesMap = new HashMap<>();
+    }
+
+    public BaseRegionImpl getRegion() {
+        if (region.get() == null)
+            throw new RuntimeException("Region has been Garbage Collected");
+        return region.get();
     }
 
     public Status getStatus() {
@@ -74,6 +81,7 @@ public class LoadData {
         return reachableGraph;
     }
 
+
     public ShortestPathAlgorithm<Node, Edge> getShortestPath() {
         return shortestPath;
     }
@@ -100,5 +108,25 @@ public class LoadData {
     public void invalidate() {
         if (status == Status.VALIDATED)
             status = Status.EVALUATED;
+    }
+
+    public void delete() {
+        this.graph = null;
+        this.reachableGraph = null;
+        this.region.clear();
+        this.reachableLocationsMap.forEach((integer, integerMapMap) -> {
+            integerMapMap.forEach((integer1, integerLocationMap) ->
+                    integerLocationMap.clear()
+            );
+            integerMapMap.clear();
+        });
+        this.reachableLocationsMap.clear();
+        this.upperCorner = null;
+        this.lowerCorner = null;
+        this.samplePoint = null;
+        this.status = null;
+        this.shortestPath = null;
+        this.nodesMap.clear();
+        this.nodesMap = null;
     }
 }

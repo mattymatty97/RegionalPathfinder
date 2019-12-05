@@ -1,5 +1,6 @@
 package com.mattymatty.RegionalPathfinder.api.region;
 
+import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.api.Status;
 import com.mattymatty.RegionalPathfinder.api.entity.Entity;
 import com.mattymatty.RegionalPathfinder.core.StatusImpl;
@@ -64,11 +65,11 @@ public interface Region {
             result.setStatus(3);
         } else {
             result.setStatus(1);
-            new Thread(() -> {
+            RegionalPathfinder.getInstance().executor.execute(() -> {
                 result.setStatus(2);
                 result.setProduct(((RegionImpl) this)._getIntersection(region));
                 result.setStatus(3);
-            }).start();
+            });
         }
         return result;
     }

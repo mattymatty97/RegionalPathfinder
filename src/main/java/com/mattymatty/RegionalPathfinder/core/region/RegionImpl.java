@@ -5,7 +5,10 @@ import com.google.common.cache.CacheBuilder;
 import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.api.region.RegionType;
 import org.bukkit.Location;
+import org.json.JSONObject;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -21,10 +24,14 @@ public interface RegionImpl extends Region {
 
     //static creator
     static Region createRegion(String name, RegionType type) {
-        if (type == RegionType.BASE)
-            return new BaseRegionImpl(name);
-        if (type == RegionType.EXTENDED)
-            return new ExtendedRegionImpl(name);
+        switch (type) {
+            case BASE:
+                return new BaseRegionImpl(name);
+            case EXTENDED:
+                return new ExtendedRegionImpl(name);
+            case MERGED:
+                return new MergedRegionImpl(name);
+        }
         return null;
     }
 
@@ -69,6 +76,10 @@ public interface RegionImpl extends Region {
         }
 
     }
+
+    void fromJson(JSONObject json);
+
+    void toJson(File baseCache, File extendedCache) throws IOException;
 
     Path _getPath(Location start, Location end);
 

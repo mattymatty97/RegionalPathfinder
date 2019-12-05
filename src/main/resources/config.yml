@@ -1,4 +1,4 @@
-config-version: 1
+config-version: 1.5
 #---------------------
 #logging levels: 0 normal, 1 finer, -1 reduced
 logging-level: 0
@@ -8,5 +8,8 @@ async-max-halt-time: 10
 
 #how many ticks to wait till next sync operation
 async-tick-delay: 3
+
+#how many threads should be running parallely ( typically the number of cores )
+max-running-threads: default
 
 

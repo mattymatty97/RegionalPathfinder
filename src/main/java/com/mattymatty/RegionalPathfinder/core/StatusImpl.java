@@ -117,13 +117,17 @@ public class StatusImpl<T> implements Status<T> {
         return this;
     }
 
+    Plugin plugin = RegionalPathfinder.getInstance();
+
     public StatusImpl() {
         this.sem = new Semaphore(0);
         if (!sync) {
-            this.eventThread = new Thread(() -> {
+            RegionalPathfinder.getInstance().executor.execute(() -> {
+                this.eventThread = Thread.currentThread();
                 try {
                     while (!Thread.interrupted()) {
                         sem.acquire();
+                        Bukkit.getScheduler().runTask(plugin, this::syncRun);
                         if (this.isScheduled()) {
                             if (this.onSchedule != null)
                                 this.onSchedule.run();
@@ -147,21 +151,14 @@ public class StatusImpl<T> implements Status<T> {
             });
             RegionalPathfinder.getInstance().runningThreads.add(eventThread);
 
-            this.syncronousLooper = Bukkit.getScheduler().runTaskTimer(RegionalPathfinder.getInstance(), this::syncRun, 1, 1);
+            //this.syncronousLooper = Bukkit.getScheduler().runTaskTimer(RegionalPathfinder.getInstance(), this::syncRun, 1, 1);
 
-            RegionalPathfinder.getInstance().runningTasks.add(syncronousLooper);
-            this.eventThread.start();
+            //RegionalPathfinder.getInstance().runningTasks.add(syncronousLooper);
         }
     }
 
     public Plugin setPlugin(Plugin plugin) {
-        if (!sync) {
-
-            RegionalPathfinder.getInstance().runningTasks.remove(syncronousLooper);
-            this.syncronousLooper.cancel();
-            this.syncronousLooper = Bukkit.getScheduler().runTaskTimer(plugin, this::syncRun, 1, 1);
-            RegionalPathfinder.getInstance().runningTasks.add(syncronousLooper);
-        }
+        this.plugin = plugin;
         return plugin;
     }
 

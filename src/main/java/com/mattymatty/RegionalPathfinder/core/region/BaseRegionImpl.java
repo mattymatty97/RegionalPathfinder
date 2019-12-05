@@ -21,7 +21,10 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.jgrapht.GraphPath;
 import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
+import org.json.JSONObject;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.*;
 import java.util.concurrent.Semaphore;
@@ -37,7 +40,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     private final int ID;
     private String Name;
     private Entity entity = new PlayerEntity();
-    private LoadData loadData;
+    LoadData loadData;
     private Cache<Node, ShortestPathAlgorithm.SingleSourcePaths<Node, Edge>> sourceCache = CacheBuilder.newBuilder().softValues()
             .maximumSize(15).build();
 
@@ -257,6 +260,16 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     @Override
     public void delete() {
         sourceCache.invalidateAll();
+        this.loadData.delete();
+        this.loadData = null;
+        this.lowerCorner = null;
+        this.upperCorner = null;
+        this.samplepoint = null;
+        this.backreferences.clear();
+        this.backreferences = null;
+        this.entity = null;
+        this.Name = null;
+        this.sourceCache = null;
     }
 
     @Override
@@ -289,6 +302,16 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     }
 
     @Override
+    public void fromJson(JSONObject json) {
+
+    }
+
+    @Override
+    public void toJson(File baseCache, File extendedCache) throws IOException {
+
+    }
+
+    @Override
     public Path _getPath(Location start, Location end) {
         Location actual_s = new Location(start.getWorld(), start.getBlockX(), start.getBlockY(), start.getBlockZ()).add(0.5, 0.5, 0.5);
         Location actual_e = new Location(end.getWorld(), end.getBlockX(), end.getBlockY(), end.getBlockZ()).add(0.5, 0.5, 0.5);
@@ -302,13 +325,13 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
         } catch (Exception ignored) {
         }
 
-        return (path != null) ? new Path(path.getVertexList().stream().map(Node::getLoc).map(Location::clone).collect(Collectors.toList()), path.getWeight()) : null;
+        return (path != null) ? new Path(path.getVertexList().stream().map(Node::getLoc).collect(Collectors.toList()), path.getWeight()) : null;
     }
 
     @Override
     public Status<Path> getPath(Location start, Location end) {
         StatusImpl<Path> status = new StatusImpl<>();
-        new Thread(() -> {
+        RegionalPathfinder.getInstance().executor.execute(() -> {
             RegionalPathfinder.getInstance().runningThreads.add(Thread.currentThread());
             boolean locked = false;
             long tic = System.currentTimeMillis();
@@ -382,7 +405,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
                 status.setStatus(4);
             }
             RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
-        }).start();
+        });
         return status;
     }
 

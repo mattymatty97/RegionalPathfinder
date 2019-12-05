@@ -20,9 +20,15 @@ import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
 import org.jgrapht.alg.interfaces.StrongConnectivityAlgorithm;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.builder.GraphTypeBuilder;
+import org.jgrapht.io.ExportException;
+import org.jgrapht.io.JSONExporter;
+import org.json.JSONObject;
 
 import javax.validation.constraints.Positive;
+import java.io.File;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -120,7 +126,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
             }
         } else {
             Set<Location> finalExcludedWaypoints = excludedWaypoints;
-            new Thread(() -> {
+            RegionalPathfinder.getInstance().executor.execute(() -> {
                 boolean locked = false;
                 RegionalPathfinder.getInstance().runningThreads.add(Thread.currentThread());
                 try {
@@ -142,7 +148,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                         lock.unlock();
                 }
                 RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
-            }).start();
+            });
         }
         return status;
     }
@@ -250,7 +256,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                 status.setStatus(4);
             }
         } else
-            new Thread(() -> {
+            RegionalPathfinder.getInstance().executor.execute(() -> {
                 boolean locked = false;
                 RegionalPathfinder.getInstance().runningThreads.add(Thread.currentThread());
                 try {
@@ -272,7 +278,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                         lock.unlock();
                 }
                 RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
-            }).start();
+            });
         return status;
     }
 
@@ -357,7 +363,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
         Stream<Location> locationStream = path.getEdgeList().stream().map(Edge::getPath).flatMap(l -> l.stream().skip(1));
 
-        Path ret = new Path(Stream.concat(Stream.of(start), locationStream).map(Location::clone).collect(Collectors.toList()), path.getWeight());
+        Path ret = new Path(Stream.concat(Stream.of(start), locationStream).collect(Collectors.toList()), path.getWeight());
 
         if (sadded)
             graph.removeVertex(snode);
@@ -640,7 +646,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     public Status<Path> getPath(Location start, Location end) {
         long tic = System.currentTimeMillis();
         StatusImpl<Path> status = new StatusImpl<>();
-        new Thread(() -> {
+        RegionalPathfinder.getInstance().executor.execute(() -> {
             RegionalPathfinder.getInstance().runningThreads.add(Thread.currentThread());
             status.setStatus(1);
             boolean locked = false;
@@ -751,9 +757,14 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
 
                 GraphPath<Node, Edge> path = spa.getPath(snode, enode);
 
-                Stream<Location> locationStream = path.getEdgeList().stream().map(Edge::getPath).flatMap(l -> l.stream().skip(1));
+                Path ret = null;
 
-                Path ret = new Path(Stream.concat(Stream.of(start), locationStream).map(Location::clone).collect(Collectors.toList()), path.getWeight());
+                if (path != null) {
+
+                    Stream<Location> locationStream = path.getEdgeList().stream().map(Edge::getPath).flatMap(l -> l.stream().skip(1));
+
+                    ret = new Path(Stream.concat(Stream.of(start), locationStream).map(Location::clone).collect(Collectors.toList()), path.getWeight());
+                }
 
                 status.totTime = (System.currentTimeMillis() - tic);
                 status.setProduct(ret);
@@ -776,7 +787,7 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
                     lock.unlock();
             }
             RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
-        }).start();
+        });
         return status;
     }
 
@@ -834,5 +845,25 @@ public class ExtendedRegionImpl implements ExtendedRegion, RegionImpl {
     public ExtendedRegionImpl(String name) {
         id = RegionImpl.nextID.getAndIncrement();
         this.name = name;
+    }
+
+    @Override
+    public void fromJson(JSONObject json) {
+
+    }
+
+    @Override
+    public void toJson(File baseCache, File extendedCache) throws IOException {
+        JSONObject json = new JSONObject();
+        JSONExporter<Node, Edge> exporter = new JSONExporter<>();
+        File tempFile = File.createTempFile("RPF-", ".tmp");
+        tempFile.deleteOnExit();
+        try {
+            exporter.exportGraph(graph, tempFile);
+            json.put("graph", new String(Files.readAllBytes(tempFile.toPath())));
+
+
+        } catch (ExportException ignored) {
+        }
     }
 }

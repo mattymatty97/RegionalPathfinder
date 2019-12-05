@@ -25,7 +25,7 @@ public class SynchronousLoader implements Loader {
         try {
             status.setStatus(1);
             data.status = LoadData.Status.LOADING;
-            Logger.info("Started loading region: " + data.region.getName());
+            Logger.info("Started loading region: " + data.getRegion().getName());
             preLoad(data);
             int count = 0;
             for (int i = 0; (i < data.z_size * data.y_size * data.x_size); i++) {
@@ -34,9 +34,9 @@ public class SynchronousLoader implements Loader {
                 int x = i % data.x_size;
                 Location actual = cloneLoc(data.lowerCorner).add(x, y, z);
                 if(!actual.getChunk().isLoaded())
-                    throw new LoaderException("Chunk not loaded",data.region);
+                    throw new LoaderException("Chunk not loaded", data.getRegion());
                 //test if the point is a valid point
-                if (data.region.getEntity().isValidLocation(actual)) {
+                if (data.getRegion().getEntity().isValidLocation(actual)) {
                     count++;
                     Node node = new Node(actual, i);
                     data.graph.addVertex(node);
@@ -47,12 +47,12 @@ public class SynchronousLoader implements Loader {
             if (count != 0) {
                 data.status = LoadData.Status.LOADED;
                 status.setProduct(new Location[]{data.lowerCorner, data.upperCorner});
-                Logger.info("Loaded region: " + data.region.getName());
+                Logger.info("Loaded region: " + data.getRegion().getName());
                 Logger.fine("server got halted for: " + status.syncTime + " ms");
                 Logger.fine("total compute time: " + status.totTime + " ms");
             } else {
                 data.status = null;
-                Logger.info("Failed loading region: " + data.region.getName());
+                Logger.info("Failed loading region: " + data.getRegion().getName());
                 Logger.fine("server got halted for: " + status.syncTime + " ms");
                 Logger.fine("total compute time: " + status.totTime + " ms");
             }
@@ -61,7 +61,7 @@ public class SynchronousLoader implements Loader {
             status.totTime = (toc - tic);
             status.setStatus(3);
         } catch (Exception ex) {
-            Logger.info("Failed loading region: " + data.region.getName());
+            Logger.info("Failed loading region: " + data.getRegion().getName());
             Logger.fine("server got halted for: " + status.syncTime + " ms");
             Logger.fine("total compute time: " + status.totTime + " ms");
             status.ex = ex;
@@ -76,17 +76,17 @@ public class SynchronousLoader implements Loader {
         long toc;
         try {
             if (data.status.getValue() < LoadData.Status.LOADED.getValue())
-                throw new LoaderException("Region not loaded", data.region);
+                throw new LoaderException("Region not loaded", data.getRegion());
             status.setStatus(1);
             status.setStatus(2);
             if (data.samplePoint.getWorld() != data.upperCorner.getWorld()) {
-                throw new RegionException("samplepoint is not in the world", data.region);
+                throw new RegionException("samplepoint is not in the world", data.getRegion());
             }
-            if (!data.region.getValidLocations().contains(data.samplePoint)) {
-                throw new RegionException("samplepoint is not in the region", data.region);
+            if (!data.getRegion().getValidLocations().contains(data.samplePoint)) {
+                throw new RegionException("samplepoint is not in the region", data.getRegion());
             }
             data.status = LoadData.Status.EVALUATING;
-            Logger.info("Started evaluating region: " + data.region.getName());
+            Logger.info("Started evaluating region: " + data.getRegion().getName());
             preEvaluate(data);
 
             //create visit queue
@@ -99,7 +99,7 @@ public class SynchronousLoader implements Loader {
                 int z = (act.getI() / data.x_size) % data.z_size;
                 int x = act.getI() % data.x_size;
 
-                Vector[] movements = data.region.getEntity().getAllowedMovements();
+                Vector[] movements = data.getRegion().getEntity().getAllowedMovements();
                 //iterate for all the possible movements
                 for (Vector movement : movements) {
                     int dx = movement.getBlockX();
@@ -118,9 +118,9 @@ public class SynchronousLoader implements Loader {
 
                         //if dest is valid
                         if (dest != null &&
-                                data.region.getEntity().extraMovementChecks(act.getLoc(), dest.getLoc())) {
+                                data.getRegion().getEntity().extraMovementChecks(act.getLoc(), dest.getLoc())) {
                             Edge edge = data.graph.addEdge(act, dest).setSource(act).setDest(dest);
-                            data.graph.setEdgeWeight(edge, data.region.getEntity().movementCost(act.getLoc(), dest.getLoc()));
+                            data.graph.setEdgeWeight(edge, data.getRegion().getEntity().movementCost(act.getLoc(), dest.getLoc()));
                         }
                     }
 
@@ -146,8 +146,8 @@ public class SynchronousLoader implements Loader {
                 data.status = LoadData.Status.LOADED;
                 status.totTime = (toc - tic);
                 status.setStatus(3);
-                    Logger.info("Failed evaluating region: " + data.region.getName());
-                    Logger.fine("server got halted for: " + status.syncTime + " ms");
+                Logger.info("Failed evaluating region: " + data.getRegion().getName());
+                Logger.fine("server got halted for: " + status.syncTime + " ms");
                     Logger.fine("total compute time: " + status.totTime + " ms");
                 return;
             }
@@ -166,11 +166,11 @@ public class SynchronousLoader implements Loader {
             status.setProduct(data.samplePoint);
             data.status = LoadData.Status.EVALUATED;
             status.setStatus(3);
-            Logger.info("Evalauted region: " + data.region.getName());
+            Logger.info("Evalauted region: " + data.getRegion().getName());
             Logger.fine("server got halted for: " + status.syncTime + " ms");
             Logger.fine("total compute time: " + status.totTime + " ms");
         } catch (Exception ex) {
-            Logger.info("Failed evaluating region: " + data.region.getName());
+            Logger.info("Failed evaluating region: " + data.getRegion().getName());
             Logger.fine("server got halted for: " + status.syncTime + " ms");
             Logger.fine("total compute time: " + status.totTime + " ms");
             status.ex = ex;
@@ -185,20 +185,20 @@ public class SynchronousLoader implements Loader {
         long toc;
         try {
             if (data.status.getValue() < LoadData.Status.EVALUATED.getValue())
-                throw new LoaderException("Region is not evaluated", data.region);
+                throw new LoaderException("Region is not evaluated", data.getRegion());
 
             status.setStatus(1);
             status.setStatus(2);
 
             data.status = LoadData.Status.VALIDATING;
 
-            Logger.info("Started validating region: " + data.region.getName());
+            Logger.info("Started validating region: " + data.getRegion().getName());
 
             if (data.getReachableGraph().vertexSet().parallelStream()
-                    .anyMatch(n -> !data.region.getEntity().isValidLocation(n.getLoc()))
+                    .anyMatch(n -> !data.getRegion().getEntity().isValidLocation(n.getLoc()))
                     ||
                     data.getReachableGraph().edgeSet().parallelStream()
-                            .anyMatch(e -> !data.region.getEntity().extraMovementChecks(e.getSource().getLoc(), e.getDest().getLoc()))) {
+                            .anyMatch(e -> !data.getRegion().getEntity().extraMovementChecks(e.getSource().getLoc(), e.getDest().getLoc()))) {
                 data.status = LoadData.Status.EVALUATED;
             }
 
@@ -211,11 +211,11 @@ public class SynchronousLoader implements Loader {
             status.percentage = 1f;
             status.setStatus(3);
 
-            Logger.info(((data.status == LoadData.Status.VALIDATED) ? "Validated" : "Failded validating") + " region: " + data.region.getName());
+            Logger.info(((data.status == LoadData.Status.VALIDATED) ? "Validated" : "Failded validating") + " region: " + data.getRegion().getName());
             Logger.fine("server got halted for: " + status.syncTime + " ms");
             Logger.fine("total compute time: " + status.totTime + " ms");
         } catch (Exception ex) {
-            Logger.info("Failded validating region: " + data.region.getName());
+            Logger.info("Failded validating region: " + data.getRegion().getName());
             Logger.fine("server got halted for: " + status.syncTime + " ms");
             Logger.fine("total compute time: " + status.totTime + " ms");
             status.ex = ex;
@@ -227,7 +227,7 @@ public class SynchronousLoader implements Loader {
         try {
             Math.multiplyExact(Math.multiplyExact(data.x_size, data.y_size), data.z_size);
         } catch (ArithmeticException ex) {
-            throw new LoaderException("Region is too big", data.region);
+            throw new LoaderException("Region is too big", data.getRegion());
         }
 
         data.nodesMap.clear();
