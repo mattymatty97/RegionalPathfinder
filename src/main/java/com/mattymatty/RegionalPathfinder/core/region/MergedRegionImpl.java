@@ -17,7 +17,9 @@ import org.bukkit.World;
 import org.jgrapht.Graph;
 import org.jgrapht.GraphPath;
 import org.jgrapht.Graphs;
+import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector;
 import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
+import org.jgrapht.alg.interfaces.StrongConnectivityAlgorithm;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.builder.GraphTypeBuilder;
 import org.json.JSONObject;
@@ -26,6 +28,7 @@ import javax.validation.constraints.Positive;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class MergedRegionImpl implements ExtendedRegion, RegionImpl {
@@ -41,6 +44,9 @@ public class MergedRegionImpl implements ExtendedRegion, RegionImpl {
 
     private Set<RegionImpl> regions = new HashSet<>();
 
+    private boolean changed = false;
+
+    private Set<Location> reachable = new HashSet<>();
 
     private Cache<Node, ShortestPathAlgorithm.SingleSourcePaths<Node, Edge>> sourceCache = CacheBuilder.newBuilder().softValues()
             .maximumSize(15).build();
@@ -73,6 +79,7 @@ public class MergedRegionImpl implements ExtendedRegion, RegionImpl {
                             sourceCache.invalidateAll();
                             Graphs.addGraph(graph, sub_graph);
                             regions.add(baseRegion);
+                            changed = true;
                         } catch (Exception ex) {
                             status.ex = ex;
                             status.totTime = (System.currentTimeMillis() - tic);
@@ -169,7 +176,18 @@ public class MergedRegionImpl implements ExtendedRegion, RegionImpl {
 
     @Override
     public Set<Location> getReachableLocations() {
-        return regions.stream().flatMap(region -> region.getReachableLocations().stream()).collect(Collectors.toSet());
+        if (!changed)
+            return new HashSet<>(reachable);
+        changed = false;
+        StrongConnectivityAlgorithm<Node, Edge> sca = new KosarajuStrongConnectivityInspector<>(graph);
+        AtomicReference<Node> to_reach = null;
+        regions.stream().findFirst().ifPresent(region -> to_reach.set(((BaseRegionImpl) region).loadData.getNode(((BaseRegionImpl) region).loadData.samplePoint)));
+        if (to_reach.get() != null) {
+            reachable = new HashSet<>();
+            Optional<Graph<Node, Edge>> opt = sca.getStronglyConnectedComponents().stream().filter(nodeEdgeGraph -> nodeEdgeGraph.containsVertex(to_reach.get())).findAny();
+            opt.ifPresent(nodeEdgeGraph -> reachable = nodeEdgeGraph.vertexSet().stream().map(Node::getLoc).collect(Collectors.toSet()));
+        }
+        return new HashSet<>(reachable);
     }
 
     @Override
