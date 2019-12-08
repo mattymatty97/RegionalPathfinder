@@ -180,7 +180,7 @@ public class MergedRegionImpl implements ExtendedRegion, RegionImpl {
             return new HashSet<>(reachable);
         changed = false;
         StrongConnectivityAlgorithm<Node, Edge> sca = new KosarajuStrongConnectivityInspector<>(graph);
-        AtomicReference<Node> to_reach = null;
+        AtomicReference<Node> to_reach = new AtomicReference<>(null);
         regions.stream().findFirst().ifPresent(region -> to_reach.set(((BaseRegionImpl) region).loadData.getNode(((BaseRegionImpl) region).loadData.samplePoint)));
         if (to_reach.get() != null) {
             reachable = new HashSet<>();
