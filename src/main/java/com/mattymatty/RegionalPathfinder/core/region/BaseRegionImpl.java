@@ -14,7 +14,6 @@ import com.mattymatty.RegionalPathfinder.core.graph.Node;
 import com.mattymatty.RegionalPathfinder.core.loader.LoadData;
 import com.mattymatty.RegionalPathfinder.core.loader.Loader;
 import com.mattymatty.RegionalPathfinder.core.loader.SynchronousLoader;
-import com.mattymatty.RegionalPathfinder.exeptions.AsyncExecption;
 import com.mattymatty.RegionalPathfinder.exeptions.RegionException;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -71,16 +70,9 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     @Override
     public World getWorld() {
-        if (!lock.tryLock()) {
-            if (readers.getAndUpdate(operand -> ((operand == 0) ? operand : operand++)) == 0) {
-                throw new AsyncExecption("Async operation still running on this region", this);
-            }
-        } else
-            readers.incrementAndGet();
 
         World world = (loadData == null) ? null : loadData.lowerCorner.getWorld();
-        if (readers.decrementAndGet() == 0)
-            lock.unlock();
+
         return world;
     }
 
@@ -89,16 +81,9 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     @Override
     public Set<Location> getValidLocations() {
 
-        if (!lock.tryLock()) {
-            if (readers.getAndUpdate(operand -> ((operand == 0) ? operand : operand++)) == 0) {
-                throw new AsyncExecption("Async operation still running on this region", this);
-            }
-        } else
-            readers.incrementAndGet();
 
         Set<Location> ret = (loadData == null) ? null : new HashSet<>(loader.getValid(loadData));
-        if (readers.decrementAndGet() == 0)
-            lock.unlock();
+
         return ret;
     }
 
@@ -110,32 +95,15 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     @Override
     public Set<Location> getReachableLocations() {
 
-        if (!lock.tryLock()) {
-            if (readers.getAndUpdate(operand -> ((operand == 0) ? operand : operand++)) == 0) {
-                throw new AsyncExecption("Async operation still running on this region", this);
-            }
-        } else
-            readers.incrementAndGet();
-
         Set<Location> ret = (loadData == null) ? null : new HashSet<>(loader.getReachable(loadData));
-        if (readers.decrementAndGet() == 0)
-            lock.unlock();
+
         return ret;
     }
 
     @Override
     public Set<Location> getReachableLocations(Location center, int range) {
 
-        if (!lock.tryLock()) {
-            if (readers.getAndUpdate(operand -> ((operand == 0) ? operand : operand++)) == 0) {
-                throw new AsyncExecption("Async operation still running on this region", this);
-            }
-        } else
-            readers.incrementAndGet();
-
         if (loadData == null) {
-            if (readers.decrementAndGet() == 0)
-                lock.unlock();
             return null;
         }
         Set<Location> result = new HashSet<>();
@@ -155,24 +123,14 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
                     }
             );
         }
-        if (readers.decrementAndGet() == 0)
-            lock.unlock();
         return result;
     }
 
     @Override
     public Set<Location> getReachableLocations(Location center, int x_range, int y_range, int z_range) {
 
-        if (!lock.tryLock()) {
-            if (readers.getAndUpdate(operand -> ((operand == 0) ? operand : operand++)) == 0) {
-                throw new AsyncExecption("Async operation still running on this region", this);
-            }
-        } else
-            readers.incrementAndGet();
 
         if (loadData == null) {
-            if (readers.decrementAndGet() == 0)
-                lock.unlock();
             return null;
         }
         Set<Location> result = new HashSet<>();
@@ -192,8 +150,6 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
                     }
             );
         }
-        if (readers.decrementAndGet() == 0)
-            lock.unlock();
         return result;
     }
 
@@ -204,28 +160,14 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     @Override
     public boolean isValid() {
 
-        if (!lock.tryLock()) {
-            if (readers.getAndUpdate(operand -> ((operand == 0) ? operand : operand++)) == 0) {
-                throw new AsyncExecption("Async operation still running on this region", this);
-            }
-        } else
-            readers.incrementAndGet();
 
         boolean ret = (loadData != null) && (loadData.getStatus() == LoadData.Status.VALIDATED);
-        if (readers.decrementAndGet() == 0)
-            lock.unlock();
         return ret;
     }
 
     @Override
     public Location[] getCorners() {
 
-        if (!lock.tryLock()) {
-            if (readers.getAndUpdate(operand -> ((operand == 0) ? operand : operand++)) == 0) {
-                throw new AsyncExecption("Async operation still running on this region", this);
-            }
-        } else
-            readers.incrementAndGet();
 
         Location[] ret = null;
         if (loadData != null)
@@ -270,8 +212,6 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
                             lowerCorner.getZ()),
                     upperCorner
             };
-        if (readers.decrementAndGet() == 0)
-            lock.unlock();
         return ret;
     }
 
@@ -290,12 +230,6 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
     public boolean isInRegion(Location location) {
         boolean ret = false;
 
-        if (!lock.tryLock()) {
-            if (readers.getAndUpdate(operand -> ((operand == 0) ? operand : operand++)) == 0) {
-                throw new AsyncExecption("Async operation still running on this region", this);
-            }
-        } else
-            readers.incrementAndGet();
 
         if (loadData != null && loadData.getStatus().getValue() > LoadData.Status.LOADING.getValue()) {
 
@@ -305,8 +239,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
             ret = dx >= 0 && dx < loadData.getX_size() && dy >= 0 && dy < loadData.getY_size() && dz >= 0 && dz < loadData.getZ_size();
         }
-        if (readers.decrementAndGet() == 0)
-            lock.unlock();
+
         return ret;
     }
 
@@ -316,20 +249,13 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
         if (!isInRegion(location))
             return false;
 
-        if (!lock.tryLock()) {
-            if (readers.getAndUpdate(operand -> ((operand == 0) ? operand : operand++)) == 0) {
-                throw new AsyncExecption("Async operation still running on this region", this);
-            }
-        } else
-            readers.incrementAndGet();
 
         if (loadData != null && loadData.getStatus().getValue() > LoadData.Status.LOADING.getValue()) {
             Location actual_loc = new Location(location.getWorld(), location.getBlockX(), location.getBlockY(), location.getBlockZ()).add(0.5, 0.5, 0.5);
             Node node = loadData.getNode(actual_loc);
             ret = node != null;
         }
-        if (readers.decrementAndGet() == 0)
-            lock.unlock();
+
         return ret;
     }
 
@@ -350,12 +276,7 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
 
     @Override
     public boolean isReachableLocation(Location location) {
-        if (!lock.tryLock()) {
-            if (readers.getAndUpdate(operand -> ((operand == 0) ? operand : operand++)) == 0) {
-                throw new AsyncExecption("Async operation still running on this region", this);
-            }
-        } else
-            readers.incrementAndGet();
+
 
         boolean ret = false;
         if (loadData == null)
@@ -375,8 +296,6 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
             }
         }
 
-        if (readers.decrementAndGet() == 0)
-            lock.unlock();
         return ret;
     }
 
@@ -430,7 +349,6 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
             long tic = System.currentTimeMillis();
             try {
                 status.setStatus(1);
-                lock.lockInterruptibly();
                 locked = true;
                 if (loadData.getStatus() == LoadData.Status.VALIDATED) {
 
@@ -464,7 +382,6 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
                     if (!allowed.get()) {
                         status.totTime = (System.currentTimeMillis() - tic);
                         status.setStatus(3);
-                        lock.unlock();
                         RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                         return;
                     }
@@ -489,12 +406,9 @@ public class BaseRegionImpl implements RegionImpl, BaseRegion {
                     throw new RegionException("Region is not valid", this);
                 }
                 status.setStatus(3);
-                lock.unlock();
             } catch (Exception ex) {
                 status.ex = ex;
                 status.totTime = (System.currentTimeMillis() - tic);
-                if (locked)
-                    lock.unlock();
                 status.setStatus(4);
             }
             RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());

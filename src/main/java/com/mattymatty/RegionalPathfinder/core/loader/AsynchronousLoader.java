@@ -33,7 +33,6 @@ public class AsynchronousLoader implements Loader {
             long tic = System.currentTimeMillis();
             try {
                 status.setStatus(1);
-                data.getRegion().lock.lockInterruptibly();
                 locked = true;
                 status.setStatus(2);
                 data.status = LoadData.Status.LOADING;
@@ -61,7 +60,6 @@ public class AsynchronousLoader implements Loader {
                 RegionalPathfinder.getInstance().runningTasks.remove(looper);
 
                 if(status.hasException()) {
-                    data.getRegion().lock.unlock();
                     RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     return;
                 }
@@ -87,7 +85,6 @@ public class AsynchronousLoader implements Loader {
                 long toc = System.currentTimeMillis();
                 status.percentage=1f;
                 status.totTime = (toc - tic);
-                data.getRegion().lock.unlock();
                 status.setStatus(3);
             } catch (Exception ex) {
                 Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(),
@@ -97,8 +94,6 @@ public class AsynchronousLoader implements Loader {
                             Logger.fine("total compute time: " + status.totTime + " ms");
                         });
                 status.ex = ex;
-                if (locked)
-                    data.getRegion().lock.unlock();
                 status.setStatus(4);
             }
             RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
@@ -165,7 +160,6 @@ public class AsynchronousLoader implements Loader {
                     throw new LoaderException("Region not loaded", data.getRegion());
                 }
                 status.setStatus(1);
-                data.getRegion().lock.lockInterruptibly();
                 locked = true;
                 status.setStatus(2);
                 if (data.samplePoint.getWorld() != data.upperCorner.getWorld()) {
@@ -201,7 +195,6 @@ public class AsynchronousLoader implements Loader {
                 RegionalPathfinder.getInstance().runningTasks.remove(looper);
 
                 if(status.hasException()){
-                    data.getRegion().lock.unlock();
                     RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     return;
                 }
@@ -230,7 +223,6 @@ public class AsynchronousLoader implements Loader {
                         Logger.fine("server got halted for: " + status.syncTime + " ms");
                         Logger.fine("total compute time: " + status.totTime + " ms");
                     });
-                    data.getRegion().lock.unlock();
                     RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     return;
                 }
@@ -248,7 +240,6 @@ public class AsynchronousLoader implements Loader {
                 status.totTime = (toc - tic);
                 status.setProduct(data.samplePoint);
                 data.status = LoadData.Status.EVALUATED;
-                data.getRegion().lock.unlock();
                 status.setStatus(3);
                 Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> {
                     Logger.info("Evalauted region: " + data.getRegion().getName());
@@ -262,8 +253,6 @@ public class AsynchronousLoader implements Loader {
                     Logger.fine("total compute time: " + status.totTime + " ms");
                 });
                 status.ex = ex;
-                if (locked)
-                    data.getRegion().lock.unlock();
                 status.setStatus(4);
             }
             RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
@@ -347,7 +336,6 @@ public class AsynchronousLoader implements Loader {
                 }
 
                 status.setStatus(1);
-                data.getRegion().lock.lockInterruptibly();
                 locked = true;
                 status.setStatus(2);
 
@@ -374,7 +362,6 @@ public class AsynchronousLoader implements Loader {
                 RegionalPathfinder.getInstance().runningTasks.add(looper);
 
                 if(status.hasException()){
-                    data.getRegion().lock.unlock();
                     RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());
                     return;
                 }
@@ -386,7 +373,6 @@ public class AsynchronousLoader implements Loader {
                 toc = System.currentTimeMillis();
                 status.totTime = (toc - tic);
                 status.percentage = 1f;
-                data.getRegion().lock.unlock();
                 status.setStatus(3);
 
                 Bukkit.getScheduler().runTask(RegionalPathfinder.getInstance(), () -> {
@@ -401,8 +387,6 @@ public class AsynchronousLoader implements Loader {
                     Logger.fine("total compute time: " + status.totTime + " ms");
                 });
                 status.ex = ex;
-                if (locked)
-                    data.getRegion().lock.unlock();
                 status.setStatus(4);
             }
             RegionalPathfinder.getInstance().runningThreads.remove(Thread.currentThread());

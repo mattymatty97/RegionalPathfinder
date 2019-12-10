@@ -28,7 +28,6 @@ import javax.validation.constraints.Positive;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class MergedRegionImpl implements ExtendedRegion, RegionImpl {
@@ -166,7 +165,7 @@ public class MergedRegionImpl implements ExtendedRegion, RegionImpl {
 
     @Override
     public Set<Location> getValidLocations() {
-        return regions.stream().flatMap(region -> region.getValidLocations().stream()).collect(Collectors.toSet());
+        return graph.vertexSet().stream().map(Node::getLoc).collect(Collectors.toSet());
     }
 
     @Override
@@ -180,12 +179,10 @@ public class MergedRegionImpl implements ExtendedRegion, RegionImpl {
             return new HashSet<>(reachable);
         changed = false;
         StrongConnectivityAlgorithm<Node, Edge> sca = new KosarajuStrongConnectivityInspector<>(graph);
-        AtomicReference<Node> to_reach = new AtomicReference<>(null);
-        regions.stream().findFirst().ifPresent(region -> to_reach.set(((BaseRegionImpl) region).loadData.getNode(((BaseRegionImpl) region).loadData.samplePoint)));
-        if (to_reach.get() != null) {
-            reachable = new HashSet<>();
-            Optional<Graph<Node, Edge>> opt = sca.getStronglyConnectedComponents().stream().filter(nodeEdgeGraph -> nodeEdgeGraph.containsVertex(to_reach.get())).findAny();
-            opt.ifPresent(nodeEdgeGraph -> reachable = nodeEdgeGraph.vertexSet().stream().map(Node::getLoc).collect(Collectors.toSet()));
+        if (!regions.isEmpty()) {
+            sca.getStronglyConnectedComponents().stream().max(Comparator.comparingInt(o -> o.vertexSet().size())).ifPresent(
+                    nodeEdgeGraph -> reachable = nodeEdgeGraph.vertexSet().stream().map(Node::getLoc).collect(Collectors.toSet())
+            );
         }
         return new HashSet<>(reachable);
     }

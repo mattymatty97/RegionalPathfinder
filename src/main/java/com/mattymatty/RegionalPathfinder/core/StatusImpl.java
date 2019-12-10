@@ -81,44 +81,6 @@ public class StatusImpl<T> implements Status<T> {
         return product.get();
     }
 
-    @Override
-    public StatusImpl<T> setOnSchedule(Runnable onSchedule) {
-        this.onSchedule = onSchedule;
-        if (sync)
-            if (isScheduled())
-                onSchedule.run();
-        return this;
-    }
-
-    @Override
-    public StatusImpl<T> setOnProgress(Consumer<Float> onProgress) {
-        this.onProgress = onProgress;
-        if (sync)
-            if (isRunning())
-                onProgress.accept(percentage);
-        return this;
-    }
-
-    @Override
-    public StatusImpl<T> setOnDone(Consumer<T> onDone) {
-        this.onDone = onDone;
-        if (sync)
-            if (isDone())
-                onDone.accept(product.get());
-        return this;
-    }
-
-    @Override
-    public StatusImpl<T> setOnException(Consumer<Exception> onException) {
-        this.onException = onException;
-        if (sync)
-            if (hasException())
-                onException.accept(ex);
-        return this;
-    }
-
-    Plugin plugin = RegionalPathfinder.getInstance();
-
     public StatusImpl() {
         this.sem = new Semaphore(0);
         if (!sync) {
@@ -138,11 +100,13 @@ public class StatusImpl<T> implements Status<T> {
                             if (this.onDone != null)
                                 this.onDone.accept(product.get());
                             RegionalPathfinder.getInstance().runningThreads.remove(eventThread);
+                            eventThread = null;
                             return;
                         } else if (this.hasException()) {
                             if (this.onException != null)
                                 this.onException.accept(ex);
                             RegionalPathfinder.getInstance().runningThreads.remove(eventThread);
+                            eventThread = null;
                             return;
                         }
                     }
@@ -155,6 +119,44 @@ public class StatusImpl<T> implements Status<T> {
 
             //RegionalPathfinder.getInstance().runningTasks.add(syncronousLooper);
         }
+    }
+
+    @Override
+    public StatusImpl<T> setOnSchedule(Runnable onSchedule) {
+        this.onSchedule = onSchedule;
+        if (sync || eventThread == null)
+            if (isScheduled())
+                onSchedule.run();
+        return this;
+    }
+
+    @Override
+    public StatusImpl<T> setOnProgress(Consumer<Float> onProgress) {
+        this.onProgress = onProgress;
+        if (sync || eventThread == null)
+            if (isRunning())
+                onProgress.accept(percentage);
+        return this;
+    }
+
+    @Override
+    public StatusImpl<T> setOnDone(Consumer<T> onDone) {
+        this.onDone = onDone;
+        if (sync || eventThread == null)
+            if (isDone())
+                onDone.accept(product.get());
+        return this;
+    }
+
+    Plugin plugin = RegionalPathfinder.getInstance();
+
+    @Override
+    public StatusImpl<T> setOnException(Consumer<Exception> onException) {
+        this.onException = onException;
+        if (sync || eventThread == null)
+            if (hasException())
+                onException.accept(ex);
+        return this;
     }
 
     public Plugin setPlugin(Plugin plugin) {
