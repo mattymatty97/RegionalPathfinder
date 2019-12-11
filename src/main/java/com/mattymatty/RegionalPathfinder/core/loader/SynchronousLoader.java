@@ -1,6 +1,7 @@
 package com.mattymatty.RegionalPathfinder.core.loader;
 
 import com.mattymatty.RegionalPathfinder.Logger;
+import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.core.StatusImpl;
 import com.mattymatty.RegionalPathfinder.core.graph.Edge;
 import com.mattymatty.RegionalPathfinder.core.graph.Node;
@@ -38,9 +39,14 @@ public class SynchronousLoader implements Loader {
                 //test if the point is a valid point
                 if (data.getRegion().getEntity().isValidLocation(actual)) {
                     count++;
-                    Node node = new Node(actual, i);
+                    Node node = RegionalPathfinder.getInstance().nodeMap.get(actual);
+                    if (node == null) {
+                        node = new Node(actual, i);
+                        RegionalPathfinder.getInstance().nodeMap.put(actual, node);
+                    }
                     data.graph.addVertex(node);
                     data.nodesMap.put(i, node);
+
                 }
             }
 

@@ -3,12 +3,14 @@ package com.mattymatty.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.api.region.Region;
 import com.mattymatty.RegionalPathfinder.api.region.RegionType;
 import com.mattymatty.RegionalPathfinder.core.StatusImpl;
+import com.mattymatty.RegionalPathfinder.core.graph.Node;
 import com.mattymatty.RegionalPathfinder.core.loader.AsynchronousLoader;
 import com.mattymatty.RegionalPathfinder.core.loader.Loader;
 import com.mattymatty.RegionalPathfinder.core.region.BaseRegionImpl;
 import com.mattymatty.RegionalPathfinder.core.region.ExtendedRegionImpl;
 import com.mattymatty.RegionalPathfinder.core.region.RegionImpl;
 import com.mattymatty.RegionalPathfinder.exeptions.InvalidNameException;
+import org.bukkit.Location;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.json.JSONObject;
@@ -37,6 +39,8 @@ public class RegionalPathfinder extends JavaPlugin {
     public static RegionalPathfinder getInstance() {
         return instance;
     }
+
+    public final Map<Location, Node> nodeMap = new HashMap<>();
 
     @Override
     public void onLoad() {

@@ -1,5 +1,6 @@
 package com.mattymatty.RegionalPathfinder.core.loader;
 
+import com.mattymatty.RegionalPathfinder.RegionalPathfinder;
 import com.mattymatty.RegionalPathfinder.core.graph.Edge;
 import com.mattymatty.RegionalPathfinder.core.graph.Node;
 import com.mattymatty.RegionalPathfinder.core.region.BaseRegionImpl;
@@ -62,15 +63,11 @@ public class LoadData {
     }
 
     public Node getNode(Location loc) {
-        int x = loc.getBlockX() - lowerCorner.getBlockX();
-        int y = loc.getBlockY() - lowerCorner.getBlockY();
-        int z = loc.getBlockZ() - lowerCorner.getBlockZ();
-        int id = x + z * x_size + y * x_size * z_size;
-        return nodesMap.get(id);
+        return RegionalPathfinder.getInstance().nodeMap.get(loc);
     }
 
-    public Map<Integer, Node> getNodesMap() {
-        return nodesMap;
+    public Map<Location, Node> getNodesMap() {
+        return RegionalPathfinder.getInstance().nodeMap;
     }
 
     public Graph<Node, Edge> getGraph() {

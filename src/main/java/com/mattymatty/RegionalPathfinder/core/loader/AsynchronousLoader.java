@@ -119,7 +119,11 @@ public class AsynchronousLoader implements Loader {
                 //test if the point is a valid point
                 if (data.getRegion().getEntity().isValidLocation(actual)) {
                     count.incrementAndGet();
-                    Node node = new Node(actual, i);
+                    Node node = RegionalPathfinder.getInstance().nodeMap.get(actual);
+                    if (node == null) {
+                        node = new Node(actual, i);
+                        RegionalPathfinder.getInstance().nodeMap.put(actual, node);
+                    }
                     data.graph.addVertex(node);
                     data.nodesMap.put(i, node);
                 }

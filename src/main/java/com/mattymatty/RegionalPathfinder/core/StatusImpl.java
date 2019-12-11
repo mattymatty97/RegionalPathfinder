@@ -167,7 +167,7 @@ public class StatusImpl<T> implements Status<T> {
     @Override
     public StatusImpl<T> setOnSyncSchedule(Runnable onSyncSchedule) {
         this.onSyncSchedule = onSyncSchedule;
-        if (sync) {
+        if (sync || eventThread == null) {
             if (isScheduled())
                 onSyncSchedule.run();
         }
@@ -177,7 +177,7 @@ public class StatusImpl<T> implements Status<T> {
     @Override
     public StatusImpl<T> setOnSyncProgress(Consumer<Float> onSyncProgress) {
         this.onSyncProgress = onSyncProgress;
-        if (sync) {
+        if (sync || eventThread == null) {
             if (isRunning())
                 onSyncProgress.accept(percentage);
         }
@@ -187,7 +187,7 @@ public class StatusImpl<T> implements Status<T> {
     @Override
     public StatusImpl<T> setOnSyncDone(Consumer<T> onSyncDone) {
         this.onSyncDone = onSyncDone;
-        if (sync) {
+        if (sync || eventThread == null) {
             if (isDone())
                 onSyncDone.accept(product.get());
         }
@@ -202,7 +202,7 @@ public class StatusImpl<T> implements Status<T> {
     @Override
     public StatusImpl<T> setOnSyncException(Consumer<Exception> onSyncException) {
         this.onSyncException = onSyncException;
-        if (sync) {
+        if (sync || eventThread == null) {
             if (hasException())
                 onSyncException.accept(ex);
         }
